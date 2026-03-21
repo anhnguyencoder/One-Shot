@@ -42,32 +42,24 @@ public class LV7LandmarkBuilder : MonoBehaviour
     [SerializeField] private int enemyPlatformY = 0;
     [SerializeField] private int enemyPlatformCenterX = 0;
 
-    [Header("Boomerang Trajectory Platforms (LV7)")]
-    [SerializeField] private bool buildBoomerangTrajectoryPlatforms = true;
+    [Header("Vertical Wave Trajectory (4 Blocks)")]
+    [SerializeField] private bool buildWaveTrajectoryPlatforms = true;
     [SerializeField] private bool keepManualTrajectoryPlatformTransform = true;
-    [SerializeField] private string trajectoryPlatformAName = "LV7_Trajectory_A";
-    [SerializeField] private string trajectoryPlatformBName = "LV7_Trajectory_B";
-    [SerializeField] private string trajectoryPlatformCName = "LV7_Trajectory_C";
+    [SerializeField] private string trajectoryPlatformAName = "LV7_Wave_A";
+    [SerializeField] private string trajectoryPlatformBName = "LV7_Wave_B";
+    [SerializeField] private string trajectoryPlatformCName = "LV7_Wave_C";
+    [SerializeField] private string trajectoryPlatformDName = "LV7_Wave_D";
     [SerializeField] private int trajectoryCenterX = 0;
     [SerializeField] private int trajectoryCenterY = 4;
     [SerializeField] private int trajectoryCenterZ = 10;
-    [SerializeField] private int trajectoryLaneSpacing = 6;
-    [SerializeField] private float trajectoryRadiusX = 2.8f;
-    [SerializeField] private float trajectoryRadiusZ = 1.4f;
-    [SerializeField] private float trajectoryCycleDuration = 5.4f;
-    [SerializeField] private float trajectoryBobAmplitude = 0.18f;
-    [SerializeField] private float trajectoryBobFrequency = 1.1f;
-    [SerializeField] private float trajectoryFlipInterval = 2.8f;
-    [SerializeField] private FigureEightCloudPlatform.FigureEightPlane trajectoryPlane = FigureEightCloudPlatform.FigureEightPlane.FrontXY;
+    [SerializeField] private int trajectoryLaneSpacing = 4;
+    [SerializeField] private float trajectoryVerticalAmplitude = 2.2f;
+    [SerializeField] private float trajectoryCycleDuration = 4.8f;
+    [SerializeField] private float trajectoryPhaseStepDegrees = 60f;
     [SerializeField] private Transform trajectoryPlatformAPassenger;
     [SerializeField] private Transform trajectoryPlatformBPassenger;
     [SerializeField] private Transform trajectoryPlatformCPassenger;
-    [SerializeField] private float shuttleInnerRadius = 0.8f;
-    [SerializeField] private float shuttleOuterRadius = 3.8f;
-    [SerializeField] private float shuttleCycleDuration = 3.6f;
-    [SerializeField] private Vector3 shuttleAxis = Vector3.right;
-    [SerializeField] private float shuttleBobAmplitude = 0.1f;
-    [SerializeField] private float shuttleBobFrequency = 1.3f;
+    [SerializeField] private Transform trajectoryPlatformDPassenger;
 
     [Header("Block Prefabs")]
     [SerializeField] private GameObject cobblestonePrefab;
@@ -245,7 +237,7 @@ public class LV7LandmarkBuilder : MonoBehaviour
         BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
-        BuildBoomerangTrajectoryPlatforms();
+        BuildWaveTrajectoryPlatforms();
         Build2DArtPanel();
         BuildGoldenGatePixelArt();
         BuildSeaAndSky();
@@ -261,7 +253,7 @@ public class LV7LandmarkBuilder : MonoBehaviour
     {
         PrepareMapRoot();
         ClearMapRootChildren();
-        ClearStandaloneTrajectoryPlatforms();
+        ClearStandaloneWavePlatforms();
 #if UNITY_EDITOR
         EditorSceneManager.MarkSceneDirty(gameObject.scene);
 #endif
@@ -287,21 +279,9 @@ public class LV7LandmarkBuilder : MonoBehaviour
         enemyPlatformForwardLength = Mathf.Max(2, enemyPlatformForwardLength);
         trajectoryCenterY = Mathf.Max(1, trajectoryCenterY);
         trajectoryLaneSpacing = Mathf.Max(2, trajectoryLaneSpacing);
-        trajectoryRadiusX = Mathf.Max(0.2f, trajectoryRadiusX);
-        trajectoryRadiusZ = Mathf.Max(0.2f, trajectoryRadiusZ);
+        trajectoryVerticalAmplitude = Mathf.Max(0.05f, trajectoryVerticalAmplitude);
         trajectoryCycleDuration = Mathf.Max(0.2f, trajectoryCycleDuration);
-        trajectoryBobAmplitude = Mathf.Max(0f, trajectoryBobAmplitude);
-        trajectoryBobFrequency = Mathf.Max(0f, trajectoryBobFrequency);
-        trajectoryFlipInterval = Mathf.Max(0f, trajectoryFlipInterval);
-        shuttleInnerRadius = Mathf.Max(0f, shuttleInnerRadius);
-        shuttleOuterRadius = Mathf.Max(shuttleInnerRadius + 0.1f, shuttleOuterRadius);
-        shuttleCycleDuration = Mathf.Max(0.2f, shuttleCycleDuration);
-        shuttleBobAmplitude = Mathf.Max(0f, shuttleBobAmplitude);
-        shuttleBobFrequency = Mathf.Max(0f, shuttleBobFrequency);
-        if (shuttleAxis.sqrMagnitude <= 0.0001f)
-        {
-            shuttleAxis = Vector3.right;
-        }
+        trajectoryPhaseStepDegrees = Mathf.Clamp(trajectoryPhaseStepDegrees, 10f, 180f);
         TryAutoAssignPrefabs();
     }
 
@@ -534,49 +514,48 @@ public class LV7LandmarkBuilder : MonoBehaviour
         }
     }
 
-    private void BuildBoomerangTrajectoryPlatforms()
+    private void BuildWaveTrajectoryPlatforms()
     {
-        if (!buildBoomerangTrajectoryPlatforms)
+        if (!buildWaveTrajectoryPlatforms)
         {
-            ClearStandaloneTrajectoryPlatforms();
+            ClearStandaloneWavePlatforms();
             return;
         }
 
         GameObject platformPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
-        EnsureFigureEightTrajectoryPlatform(
+        EnsureWaveTrajectoryPlatform(
             trajectoryPlatformAName,
-            laneIndex: -1,
-            phaseDegrees: 0f,
-            shape: FigureEightCloudPlatform.PathShape.FigureEight,
-            reverseDirection: false,
-            flipIntervalSeconds: 0f,
+            laneSlot: 0,
+            phaseDegrees: trajectoryPhaseStepDegrees * 0f,
             assignedPassenger: trajectoryPlatformAPassenger,
             platformPrefab: platformPrefab);
 
-        EnsureFigureEightTrajectoryPlatform(
+        EnsureWaveTrajectoryPlatform(
             trajectoryPlatformBName,
-            laneIndex: 0,
-            phaseDegrees: 90f,
-            shape: FigureEightCloudPlatform.PathShape.Circle,
-            reverseDirection: false,
-            flipIntervalSeconds: trajectoryFlipInterval,
+            laneSlot: 1,
+            phaseDegrees: trajectoryPhaseStepDegrees * 1f,
             assignedPassenger: trajectoryPlatformBPassenger,
             platformPrefab: platformPrefab);
 
-        EnsureShuttleTrajectoryPlatform(
+        EnsureWaveTrajectoryPlatform(
             trajectoryPlatformCName,
-            laneIndex: 1,
+            laneSlot: 2,
+            phaseDegrees: trajectoryPhaseStepDegrees * 2f,
             assignedPassenger: trajectoryPlatformCPassenger,
+            platformPrefab: platformPrefab);
+
+        EnsureWaveTrajectoryPlatform(
+            trajectoryPlatformDName,
+            laneSlot: 3,
+            phaseDegrees: trajectoryPhaseStepDegrees * 3f,
+            assignedPassenger: trajectoryPlatformDPassenger,
             platformPrefab: platformPrefab);
     }
 
-    private void EnsureFigureEightTrajectoryPlatform(
+    private void EnsureWaveTrajectoryPlatform(
         string objectName,
-        int laneIndex,
+        int laneSlot,
         float phaseDegrees,
-        FigureEightCloudPlatform.PathShape shape,
-        bool reverseDirection,
-        float flipIntervalSeconds,
         Transform assignedPassenger,
         GameObject platformPrefab)
     {
@@ -612,108 +591,43 @@ public class LV7LandmarkBuilder : MonoBehaviour
         {
             AlignBlockToGrid(
                 platform,
-                trajectoryCenterX + (laneIndex * trajectoryLaneSpacing),
+                ResolveWaveLaneX(laneSlot),
                 trajectoryCenterY,
                 trajectoryCenterZ);
         }
 
         EnsureCollider(platform);
         RemoveComponentIfPresent<RadialShuttleCloudPlatform>(platform);
-
-        FigureEightCloudPlatform mover = platform.GetComponent<FigureEightCloudPlatform>();
-        if (mover == null)
-        {
-            mover = platform.AddComponent<FigureEightCloudPlatform>();
-        }
-
-        float laneRadiusMultiplier = laneIndex == 0 ? 1.1f : 1f;
-        float laneDurationMultiplier = laneIndex == 0 ? 0.85f : 1f;
-        mover.Configure(
-            radiusX: trajectoryRadiusX * laneRadiusMultiplier,
-            radiusZ: trajectoryRadiusZ,
-            cycleDuration: trajectoryCycleDuration * laneDurationMultiplier,
-            bobAmplitude: trajectoryBobAmplitude,
-            bobFrequency: trajectoryBobFrequency,
-            assignedPassenger: assignedPassenger,
-            plane: trajectoryPlane,
-            reverse: reverseDirection,
-            shape: shape,
-            phaseDegrees: phaseDegrees,
-            flipIntervalSeconds: flipIntervalSeconds);
-    }
-
-    private void EnsureShuttleTrajectoryPlatform(
-        string objectName,
-        int laneIndex,
-        Transform assignedPassenger,
-        GameObject platformPrefab)
-    {
-        if (platformPrefab == null || string.IsNullOrWhiteSpace(objectName))
-        {
-            return;
-        }
-
-        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
-        GameObject platform;
-        bool createdNew = false;
-
-        if (existing != null)
-        {
-            platform = existing.gameObject;
-        }
-        else
-        {
-            createdNew = true;
-            platform = Instantiate(platformPrefab);
-            platform.transform.position = Vector3.zero;
-
-            if (normalizePrefabScaleToCell)
-            {
-                Vector3 scaleMultiplier = GetScaleMultiplier(platformPrefab, platform);
-                platform.transform.localScale = Vector3.Scale(platform.transform.localScale, scaleMultiplier);
-            }
-
-            platform.name = objectName;
-        }
-
-        if (createdNew || !keepManualTrajectoryPlatformTransform)
-        {
-            AlignBlockToGrid(
-                platform,
-                trajectoryCenterX + (laneIndex * trajectoryLaneSpacing),
-                trajectoryCenterY,
-                trajectoryCenterZ);
-        }
-
-        EnsureCollider(platform);
         RemoveComponentIfPresent<FigureEightCloudPlatform>(platform);
 
-        RadialShuttleCloudPlatform mover = platform.GetComponent<RadialShuttleCloudPlatform>();
+        VerticalWaveCloudPlatform mover = platform.GetComponent<VerticalWaveCloudPlatform>();
         if (mover == null)
         {
-            mover = platform.AddComponent<RadialShuttleCloudPlatform>();
+            mover = platform.AddComponent<VerticalWaveCloudPlatform>();
         }
 
         mover.Configure(
-            innerRadius: shuttleInnerRadius,
-            outerRadius: shuttleOuterRadius,
-            cycleDuration: shuttleCycleDuration,
-            bobAmplitude: shuttleBobAmplitude,
-            bobFrequency: shuttleBobFrequency,
-            radialAxis: shuttleAxis,
-            plane: trajectoryPlane,
-            flipIntervalSeconds: trajectoryFlipInterval,
+            amplitude: trajectoryVerticalAmplitude,
+            cycleDuration: trajectoryCycleDuration,
+            phaseDegrees: phaseDegrees,
             assignedPassenger: assignedPassenger);
     }
 
-    private void ClearStandaloneTrajectoryPlatforms()
+    private int ResolveWaveLaneX(int laneSlot)
     {
-        ClearStandaloneTrajectoryPlatform(trajectoryPlatformAName);
-        ClearStandaloneTrajectoryPlatform(trajectoryPlatformBName);
-        ClearStandaloneTrajectoryPlatform(trajectoryPlatformCName);
+        int offset = (laneSlot * trajectoryLaneSpacing) - ((3 * trajectoryLaneSpacing) / 2);
+        return trajectoryCenterX + offset;
     }
 
-    private void ClearStandaloneTrajectoryPlatform(string objectName)
+    private void ClearStandaloneWavePlatforms()
+    {
+        ClearStandaloneWavePlatform(trajectoryPlatformAName);
+        ClearStandaloneWavePlatform(trajectoryPlatformBName);
+        ClearStandaloneWavePlatform(trajectoryPlatformCName);
+        ClearStandaloneWavePlatform(trajectoryPlatformDName);
+    }
+
+    private void ClearStandaloneWavePlatform(string objectName)
     {
         Transform existing = FindStandaloneObjectInCurrentScene(objectName);
         if (existing == null)

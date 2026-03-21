@@ -12,6 +12,7 @@ public class RadialShuttleCloudPlatform : MonoBehaviour
     [SerializeField] private float bobAmplitude = 0.15f;
     [SerializeField] private float bobFrequency = 1f;
     [SerializeField] private float directionFlipInterval = 0f;
+    [SerializeField] private float phaseOffsetDegrees = 0f;
 
     [Header("Passenger")]
     [SerializeField] private Transform passenger;
@@ -49,7 +50,7 @@ public class RadialShuttleCloudPlatform : MonoBehaviour
         float travel = directionFlipInterval > 0f
             ? Mathf.PingPong(elapsed, Mathf.Max(0.05f, directionFlipInterval))
             : elapsed;
-        float theta = (travel / duration) * Mathf.PI * 2f;
+        float theta = ((travel / duration) * Mathf.PI * 2f) + (phaseOffsetDegrees * Mathf.Deg2Rad);
 
         float t = 0.5f - (0.5f * Mathf.Cos(theta));
         float radius = Mathf.Lerp(innerRadius, outerRadius, t);
@@ -79,7 +80,8 @@ public class RadialShuttleCloudPlatform : MonoBehaviour
         Vector3 radialAxis,
         FigureEightCloudPlatform.FigureEightPlane plane,
         float flipIntervalSeconds,
-        Transform assignedPassenger)
+        Transform assignedPassenger,
+        float phaseDegrees = 0f)
     {
         this.innerRadius = Mathf.Max(0f, innerRadius);
         this.outerRadius = Mathf.Max(this.innerRadius + 0.1f, outerRadius);
@@ -89,6 +91,7 @@ public class RadialShuttleCloudPlatform : MonoBehaviour
         this.radialAxis = radialAxis.sqrMagnitude > 0.0001f ? radialAxis.normalized : Vector3.right;
         motionPlane = plane;
         directionFlipInterval = Mathf.Max(0f, flipIntervalSeconds);
+        phaseOffsetDegrees = Mathf.Repeat(phaseDegrees, 360f);
         if (assignedPassenger != null)
         {
             passenger = assignedPassenger;
@@ -109,6 +112,7 @@ public class RadialShuttleCloudPlatform : MonoBehaviour
         bobAmplitude = Mathf.Max(0f, bobAmplitude);
         bobFrequency = Mathf.Max(0f, bobFrequency);
         directionFlipInterval = Mathf.Max(0f, directionFlipInterval);
+        phaseOffsetDegrees = Mathf.Repeat(phaseOffsetDegrees, 360f);
         if (radialAxis.sqrMagnitude <= 0.0001f)
         {
             radialAxis = Vector3.right;
@@ -239,3 +243,4 @@ public class RadialShuttleCloudPlatform : MonoBehaviour
         Gizmos.DrawSphere(center, 0.12f);
     }
 }
+

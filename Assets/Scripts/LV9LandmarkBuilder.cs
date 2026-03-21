@@ -42,6 +42,24 @@ public class LV9LandmarkBuilder : MonoBehaviour
     [SerializeField] private int enemyPlatformY = 0;
     [SerializeField] private int enemyPlatformCenterX = 0;
 
+    [Header("Wave Lock Gates (LV9)")]
+    [SerializeField] private bool buildWaveLockGates = true;
+    [SerializeField] private bool keepManualWaveGateTransform = true;
+    [SerializeField] private int waveGateCenterX = 0;
+    [SerializeField] private int waveGateCenterY = 4;
+    [SerializeField] private int waveGateCenterZ = 12;
+    [SerializeField] private float waveGateInnerRadius = 1.6f;
+    [SerializeField] private float waveGateOuterRadius = 4.8f;
+    [SerializeField] private float waveGateCycleDuration = 6.2f;
+    [SerializeField] private float waveGateDepthBobAmplitude = 0.08f;
+    [SerializeField] private float waveGatePhaseStepDegrees = 72f;
+    [SerializeField] private float waveGateStarTiltDegrees = -90f;
+    [SerializeField] private string waveGateBlockAName = "LV9_WaveStar_A";
+    [SerializeField] private string waveGateBlockBName = "LV9_WaveStar_B";
+    [SerializeField] private string waveGateBlockCName = "LV9_WaveStar_C";
+    [SerializeField] private string waveGateBlockDName = "LV9_WaveStar_D";
+    [SerializeField] private string waveGateBlockEName = "LV9_WaveStar_E";
+
     [Header("Block Prefabs")]
     [SerializeField] private GameObject cobblestonePrefab;
     [SerializeField] private GameObject minecraftCubePrefab;
@@ -218,13 +236,17 @@ public class LV9LandmarkBuilder : MonoBehaviour
         BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
+        BuildWaveLockGates();
         Build2DArtPanel();
         BuildColosseumPixelArt();
         BuildArenaForegroundAndSky();
 
         Physics.SyncTransforms();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
@@ -233,8 +255,12 @@ public class LV9LandmarkBuilder : MonoBehaviour
     {
         PrepareMapRoot();
         ClearMapRootChildren();
+        ClearStandaloneWaveLockGates();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
@@ -256,6 +282,14 @@ public class LV9LandmarkBuilder : MonoBehaviour
         artPanelHeight = Mathf.Max(12, artPanelHeight);
         enemyPlatformHalfWidth = Mathf.Max(4, enemyPlatformHalfWidth);
         enemyPlatformForwardLength = Mathf.Max(2, enemyPlatformForwardLength);
+        waveGateCenterY = Mathf.Max(1, waveGateCenterY);
+        waveGateCenterZ = Mathf.Clamp(waveGateCenterZ, 2, groundFrontDepth - 2);
+        waveGateInnerRadius = Mathf.Max(0.2f, waveGateInnerRadius);
+        waveGateOuterRadius = Mathf.Max(waveGateInnerRadius + 0.2f, waveGateOuterRadius);
+        waveGateCycleDuration = Mathf.Max(0.2f, waveGateCycleDuration);
+        waveGateDepthBobAmplitude = Mathf.Max(0f, waveGateDepthBobAmplitude);
+        waveGatePhaseStepDegrees = Mathf.Clamp(waveGatePhaseStepDegrees, 20f, 180f);
+        waveGateStarTiltDegrees = Mathf.Repeat(waveGateStarTiltDegrees, 360f);
         TryAutoAssignPrefabs();
     }
 
@@ -485,6 +519,196 @@ public class LV9LandmarkBuilder : MonoBehaviour
                 SpawnBlock(accentPrefab, -4, 1, z, $"PathAccentL_{z}");
                 SpawnBlock(accentPrefab, 4, 1, z, $"PathAccentR_{z}");
             }
+        }
+    }
+
+    private void BuildWaveLockGates()
+    {
+        if (!buildWaveLockGates)
+        {
+            ClearStandaloneWaveLockGates();
+            return;
+        }
+
+        ClearLegacyWaveLockGateObjects();
+
+        GameObject platformPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
+        if (platformPrefab == null)
+        {
+            return;
+        }
+
+        EnsureWaveGateBlock(waveGateBlockAName, 0, platformPrefab);
+        EnsureWaveGateBlock(waveGateBlockBName, 1, platformPrefab);
+        EnsureWaveGateBlock(waveGateBlockCName, 2, platformPrefab);
+        EnsureWaveGateBlock(waveGateBlockDName, 3, platformPrefab);
+        EnsureWaveGateBlock(waveGateBlockEName, 4, platformPrefab);
+    }
+
+    private void EnsureWaveGateBlock(
+        string objectName,
+        int spokeIndex,
+        GameObject platformPrefab)
+    {
+        if (platformPrefab == null || string.IsNullOrWhiteSpace(objectName))
+        {
+            return;
+        }
+
+        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
+        GameObject platform;
+        bool createdNew = false;
+
+        if (existing != null)
+        {
+            platform = existing.gameObject;
+        }
+        else
+        {
+            createdNew = true;
+            platform = Instantiate(platformPrefab);
+            platform.transform.position = Vector3.zero;
+
+            if (normalizePrefabScaleToCell)
+            {
+                Vector3 scaleMultiplier = GetScaleMultiplier(platformPrefab, platform);
+                platform.transform.localScale = Vector3.Scale(platform.transform.localScale, scaleMultiplier);
+            }
+
+            platform.name = objectName;
+        }
+
+        if (createdNew || !keepManualWaveGateTransform)
+        {
+            AlignBlockToGrid(platform, waveGateCenterX, waveGateCenterY, waveGateCenterZ);
+        }
+
+        EnsureCollider(platform);
+        RemoveComponentIfPresent<FigureEightCloudPlatform>(platform);
+        RemoveComponentIfPresent<VerticalWaveCloudPlatform>(platform);
+
+        RadialShuttleCloudPlatform mover = platform.GetComponent<RadialShuttleCloudPlatform>();
+        if (mover == null)
+        {
+            mover = platform.AddComponent<RadialShuttleCloudPlatform>();
+        }
+
+        float phaseDegrees = spokeIndex * waveGatePhaseStepDegrees;
+        Vector3 shuttleAxis = ResolveStarPulseAxis(spokeIndex);
+
+        mover.Configure(
+            innerRadius: waveGateInnerRadius,
+            outerRadius: waveGateOuterRadius,
+            cycleDuration: waveGateCycleDuration,
+            bobAmplitude: waveGateDepthBobAmplitude,
+            bobFrequency: 1f,
+            radialAxis: shuttleAxis,
+            plane: FigureEightCloudPlatform.FigureEightPlane.FrontXY,
+            flipIntervalSeconds: 0f,
+            assignedPassenger: null,
+            phaseDegrees: phaseDegrees);
+    }
+
+    private Vector3 ResolveStarPulseAxis(int spokeIndex)
+    {
+        float angleDeg = waveGateStarTiltDegrees + (spokeIndex * 72f);
+        float angleRad = angleDeg * Mathf.Deg2Rad;
+        Vector3 axis = new Vector3(Mathf.Cos(angleRad), Mathf.Sin(angleRad), 0f);
+
+        if (axis.sqrMagnitude <= 0.0001f)
+        {
+            return Vector3.up;
+        }
+
+        return axis.normalized;
+    }
+
+    private void ClearStandaloneWaveLockGates()
+    {
+        ClearStandaloneWaveLockGate(waveGateBlockAName);
+        ClearStandaloneWaveLockGate(waveGateBlockBName);
+        ClearStandaloneWaveLockGate(waveGateBlockCName);
+        ClearStandaloneWaveLockGate(waveGateBlockDName);
+        ClearStandaloneWaveLockGate(waveGateBlockEName);
+        ClearLegacyWaveLockGateObjects();
+    }
+
+    private void ClearLegacyWaveLockGateObjects()
+    {
+        // Cleanup legacy objects from old 8-block setup.
+        ClearStandaloneWaveLockGate("LV9_WaveGate1_A");
+        ClearStandaloneWaveLockGate("LV9_WaveGate1_B");
+        ClearStandaloneWaveLockGate("LV9_WaveGate1_C");
+        ClearStandaloneWaveLockGate("LV9_WaveGate1_D");
+        ClearStandaloneWaveLockGate("LV9_WaveGate2_A");
+        ClearStandaloneWaveLockGate("LV9_WaveGate2_B");
+        ClearStandaloneWaveLockGate("LV9_WaveGate2_C");
+        ClearStandaloneWaveLockGate("LV9_WaveGate2_D");
+    }
+
+    private void ClearStandaloneWaveLockGate(string objectName)
+    {
+        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
+        if (existing == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(existing.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(existing.gameObject);
+        }
+    }
+
+    private Transform FindStandaloneObjectInCurrentScene(string objectName)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+        {
+            return null;
+        }
+
+        Scene scene = gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            return null;
+        }
+
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            if (roots[i].name == objectName)
+            {
+                return roots[i].transform;
+            }
+        }
+
+        return null;
+    }
+
+    private void RemoveComponentIfPresent<T>(GameObject target) where T : Component
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        T component = target.GetComponent<T>();
+        if (component == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(component);
+        }
+        else
+        {
+            DestroyImmediate(component);
         }
     }
 
@@ -724,3 +948,4 @@ public class LV9LandmarkBuilder : MonoBehaviour
         return true;
     }
 }
+

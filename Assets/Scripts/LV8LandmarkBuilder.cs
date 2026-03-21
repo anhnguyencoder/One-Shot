@@ -41,6 +41,28 @@ public class LV8LandmarkBuilder : MonoBehaviour
     [SerializeField] private int enemyPlatformForwardLength = 10;
     [SerializeField] private int enemyPlatformY = 0;
     [SerializeField] private int enemyPlatformCenterX = 0;
+    [Header("Rose Cloud Platforms (LV8)")]
+    [SerializeField] private bool buildRoseCloudPlatforms = true;
+    [SerializeField] private bool keepManualRoseCloudTransform = true;
+    [SerializeField] private string roseCloudAName = "LV8_RoseCloud_A";
+    [SerializeField] private string roseCloudBName = "LV8_RoseCloud_B";
+    [SerializeField] private string roseCloudCName = "LV8_RoseCloud_C";
+    [SerializeField] private int roseCenterX = 0;
+    [SerializeField] private int roseCenterY = 4;
+    [SerializeField] private int roseCenterZ = 10;
+    [SerializeField] private float roseRadiusX = 9f;
+    [SerializeField] private float roseRadiusY = 7f;
+    [SerializeField] private float roseCycleDuration = 34f;
+    [SerializeField] private float roseBobAmplitude = 0.12f;
+    [SerializeField] private float roseBobFrequency = 1f;
+    [SerializeField] private float roseDirectionFlipInterval = 0f;
+    [SerializeField] private FigureEightCloudPlatform.FigureEightPlane rosePlane = FigureEightCloudPlatform.FigureEightPlane.FrontXY;
+    [SerializeField] private float roseCloudAPhaseDegrees = 0f;
+    [SerializeField] private float roseCloudBPhaseDegrees = 120f;
+    [SerializeField] private float roseCloudCPhaseDegrees = 240f;
+    [SerializeField] private Transform roseCloudAPassenger;
+    [SerializeField] private Transform roseCloudBPassenger;
+    [SerializeField] private Transform roseCloudCPassenger;
 
     [Header("Block Prefabs")]
     [SerializeField] private GameObject cobblestonePrefab;
@@ -218,13 +240,17 @@ public class LV8LandmarkBuilder : MonoBehaviour
         BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
+        BuildRoseCloudPlatforms();
         Build2DArtPanel();
         BuildSydneyOperaPixelArt();
         BuildHarborWaterAndSky();
 
         Physics.SyncTransforms();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
@@ -233,8 +259,12 @@ public class LV8LandmarkBuilder : MonoBehaviour
     {
         PrepareMapRoot();
         ClearMapRootChildren();
+        ClearStandaloneRoseCloudPlatforms();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
@@ -256,6 +286,36 @@ public class LV8LandmarkBuilder : MonoBehaviour
         artPanelHeight = Mathf.Max(12, artPanelHeight);
         enemyPlatformHalfWidth = Mathf.Max(4, enemyPlatformHalfWidth);
         enemyPlatformForwardLength = Mathf.Max(2, enemyPlatformForwardLength);
+        roseCenterY = Mathf.Max(1, roseCenterY);
+        roseRadiusX = Mathf.Max(0.1f, roseRadiusX);
+        roseRadiusY = Mathf.Max(0.1f, roseRadiusY);
+        roseCycleDuration = Mathf.Max(0.2f, roseCycleDuration);
+        roseBobAmplitude = Mathf.Max(0f, roseBobAmplitude);
+        roseBobFrequency = Mathf.Max(0f, roseBobFrequency);
+        roseDirectionFlipInterval = Mathf.Max(0f, roseDirectionFlipInterval);
+        roseCloudAPhaseDegrees = Mathf.Repeat(roseCloudAPhaseDegrees, 360f);
+        roseCloudBPhaseDegrees = Mathf.Repeat(roseCloudBPhaseDegrees, 360f);
+        roseCloudCPhaseDegrees = Mathf.Repeat(roseCloudCPhaseDegrees, 360f);
+        if (string.IsNullOrWhiteSpace(roseCloudAName))
+        {
+            roseCloudAName = "LV8_RoseCloud_A";
+        }
+        if (string.IsNullOrWhiteSpace(roseCloudBName))
+        {
+            roseCloudBName = "LV8_RoseCloud_B";
+        }
+        if (string.IsNullOrWhiteSpace(roseCloudCName))
+        {
+            roseCloudCName = "LV8_RoseCloud_C";
+        }
+        if (roseCloudBName == roseCloudAName)
+        {
+            roseCloudBName = roseCloudAName + "_B";
+        }
+        if (roseCloudCName == roseCloudAName || roseCloudCName == roseCloudBName)
+        {
+            roseCloudCName = "LV8_RoseCloud_C";
+        }
         TryAutoAssignPrefabs();
     }
 
@@ -488,6 +548,157 @@ public class LV8LandmarkBuilder : MonoBehaviour
         }
     }
 
+
+    private void BuildRoseCloudPlatforms()
+    {
+        if (!buildRoseCloudPlatforms)
+        {
+            ClearStandaloneRoseCloudPlatforms();
+            return;
+        }
+
+        GameObject cloudPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
+        EnsureRoseCloudPlatform(roseCloudAName, roseCloudAPhaseDegrees, roseCloudAPassenger, cloudPrefab);
+        EnsureRoseCloudPlatform(roseCloudBName, roseCloudBPhaseDegrees, roseCloudBPassenger, cloudPrefab);
+        EnsureRoseCloudPlatform(roseCloudCName, roseCloudCPhaseDegrees, roseCloudCPassenger, cloudPrefab);
+    }
+
+    private void EnsureRoseCloudPlatform(
+        string objectName,
+        float phaseDegrees,
+        Transform assignedPassenger,
+        GameObject cloudPrefab)
+    {
+        if (cloudPrefab == null || string.IsNullOrWhiteSpace(objectName))
+        {
+            return;
+        }
+
+        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
+        GameObject cloud;
+        bool createdNew = false;
+
+        if (existing != null)
+        {
+            cloud = existing.gameObject;
+        }
+        else
+        {
+            createdNew = true;
+            cloud = Instantiate(cloudPrefab);
+            cloud.transform.position = Vector3.zero;
+
+            if (normalizePrefabScaleToCell)
+            {
+                Vector3 scaleMultiplier = GetScaleMultiplier(cloudPrefab, cloud);
+                cloud.transform.localScale = Vector3.Scale(cloud.transform.localScale, scaleMultiplier);
+            }
+
+            cloud.name = objectName;
+        }
+
+        if (createdNew || !keepManualRoseCloudTransform)
+        {
+            AlignBlockToGrid(cloud, roseCenterX, roseCenterY, roseCenterZ);
+        }
+
+        EnsureCollider(cloud);
+        RemoveComponentIfPresent<RadialShuttleCloudPlatform>(cloud);
+        RemoveComponentIfPresent<VerticalWaveCloudPlatform>(cloud);
+
+        FigureEightCloudPlatform mover = cloud.GetComponent<FigureEightCloudPlatform>();
+        if (mover == null)
+        {
+            mover = cloud.AddComponent<FigureEightCloudPlatform>();
+        }
+
+        mover.Configure(
+            radiusX: roseRadiusX,
+            radiusZ: roseRadiusY,
+            cycleDuration: roseCycleDuration,
+            bobAmplitude: roseBobAmplitude,
+            bobFrequency: roseBobFrequency,
+            assignedPassenger: assignedPassenger,
+            plane: rosePlane,
+            reverse: false,
+            shape: FigureEightCloudPlatform.PathShape.RoseFive,
+            phaseDegrees: phaseDegrees,
+            flipIntervalSeconds: roseDirectionFlipInterval);
+    }
+
+    private void ClearStandaloneRoseCloudPlatforms()
+    {
+        ClearStandaloneRoseCloudPlatform(roseCloudAName);
+        ClearStandaloneRoseCloudPlatform(roseCloudBName);
+        ClearStandaloneRoseCloudPlatform(roseCloudCName);
+    }
+
+    private void ClearStandaloneRoseCloudPlatform(string objectName)
+    {
+        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
+        if (existing == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(existing.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(existing.gameObject);
+        }
+    }
+
+    private Transform FindStandaloneObjectInCurrentScene(string objectName)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+        {
+            return null;
+        }
+
+        Scene scene = gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            return null;
+        }
+
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            if (roots[i].name == objectName)
+            {
+                return roots[i].transform;
+            }
+        }
+
+        return null;
+    }
+
+    private void RemoveComponentIfPresent<T>(GameObject target) where T : Component
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        T component = target.GetComponent<T>();
+        if (component == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(component);
+        }
+        else
+        {
+            DestroyImmediate(component);
+        }
+    }
+
     private void Build2DArtPanel()
     {
         if (!buildPanelBehindArt)
@@ -709,3 +920,7 @@ public class LV8LandmarkBuilder : MonoBehaviour
         return true;
     }
 }
+
+
+
+

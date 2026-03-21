@@ -10,7 +10,9 @@ public class FigureEightCloudPlatform : MonoBehaviour
     public enum PathShape
     {
         FigureEight = 0,
-        Circle = 1
+        Circle = 1,
+        RoseFive = 2,
+        Lissajous = 3
     }
 
     public enum FigureEightPlane
@@ -162,10 +164,30 @@ public class FigureEightCloudPlatform : MonoBehaviour
 
     private Vector3 EvaluatePathOffset(float t)
     {
-        float major = Mathf.Sin(t) * radiusX;
-        float minor = pathShape == PathShape.Circle
-            ? Mathf.Cos(t) * radiusZ
-            : Mathf.Sin(t) * Mathf.Cos(t) * radiusZ;
+        float major;
+        float minor;
+
+        switch (pathShape)
+        {
+            case PathShape.Circle:
+                major = Mathf.Sin(t) * radiusX;
+                minor = Mathf.Cos(t) * radiusZ;
+                break;
+            case PathShape.RoseFive:
+                float roseRadius = Mathf.Cos(5f * t);
+                major = roseRadius * Mathf.Cos(t) * radiusX;
+                minor = roseRadius * Mathf.Sin(t) * radiusZ;
+                break;
+            case PathShape.Lissajous:
+                major = Mathf.Sin(3f * t) * radiusX;
+                minor = Mathf.Sin((2f * t) + (Mathf.PI * 0.5f)) * radiusZ;
+                break;
+            default:
+                major = Mathf.Sin(t) * radiusX;
+                minor = Mathf.Sin(t) * Mathf.Cos(t) * radiusZ;
+                break;
+        }
+
         float bob = bobAmplitude > 0f ? Mathf.Sin(t * bobFrequency) * bobAmplitude : 0f;
 
         switch (pathPlane)
@@ -175,7 +197,7 @@ public class FigureEightCloudPlatform : MonoBehaviour
             case FigureEightPlane.SideYZ:
                 return new Vector3(bob, major, minor);
             default:
-                // Front view: the "8" appears in X-Y plane, depth wobble is on Z.
+                // Front view: the trajectory appears in X-Y plane, depth wobble is on Z.
                 return new Vector3(major, minor, bob);
         }
     }
@@ -240,3 +262,4 @@ public class FigureEightCloudPlatform : MonoBehaviour
         Gizmos.DrawSphere(center, 0.12f);
     }
 }
+

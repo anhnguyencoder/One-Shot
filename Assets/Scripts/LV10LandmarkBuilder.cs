@@ -41,6 +41,32 @@ public class LV10LandmarkBuilder : MonoBehaviour
     [SerializeField] private int enemyPlatformForwardLength = 10;
     [SerializeField] private int enemyPlatformY = 0;
     [SerializeField] private int enemyPlatformCenterX = 0;
+    [Header("Clock Orbit Platforms (LV10)")]
+    [SerializeField] private bool buildClockOrbitPlatforms = true;
+    [SerializeField] private bool keepManualClockOrbitTransform = false;
+    [SerializeField] private bool keepManualClockOrbitMotionSettings = true;
+    [SerializeField] private int clockOrbitCenterX = 0;
+    [SerializeField] private int clockOrbitCenterY = 5;
+    [SerializeField] private int clockOrbitCenterZ = 12;
+    [SerializeField] private float clockOrbitRadius = 3f;
+    [SerializeField] private float clockOrbitCycleDuration = 9f;
+    [SerializeField] private float clockOrbitDepthBobAmplitude = 0.08f;
+    [SerializeField] private float clockOrbitDepthBobFrequency = 1f;
+    [SerializeField] private float clockOrbitPhaseOffsetDegrees = -90f;
+    [SerializeField] private bool reverseLastThreeBlocks = true;
+    [SerializeField] private FigureEightCloudPlatform.FigureEightPlane clockOrbitPlane = FigureEightCloudPlatform.FigureEightPlane.FrontXY;
+    [SerializeField] private string clockOrbitBlockAName = "LV10_ClockOrbit_A";
+    [SerializeField] private string clockOrbitBlockBName = "LV10_ClockOrbit_B";
+    [SerializeField] private string clockOrbitBlockCName = "LV10_ClockOrbit_C";
+    [SerializeField] private string clockOrbitBlockDName = "LV10_ClockOrbit_D";
+    [SerializeField] private string clockOrbitBlockEName = "LV10_ClockOrbit_E";
+    [SerializeField] private string clockOrbitBlockFName = "LV10_ClockOrbit_F";
+    [SerializeField] private Transform clockOrbitPassengerA;
+    [SerializeField] private Transform clockOrbitPassengerB;
+    [SerializeField] private Transform clockOrbitPassengerC;
+    [SerializeField] private Transform clockOrbitPassengerD;
+    [SerializeField] private Transform clockOrbitPassengerE;
+    [SerializeField] private Transform clockOrbitPassengerF;
 
     [Header("Block Prefabs")]
     [SerializeField] private GameObject cobblestonePrefab;
@@ -218,13 +244,17 @@ public class LV10LandmarkBuilder : MonoBehaviour
         BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
+        BuildClockOrbitPlatforms();
         Build2DArtPanel();
         BuildPetraFacadePixelArt();
         BuildDesertCanyonAndSun();
 
         Physics.SyncTransforms();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
@@ -233,8 +263,12 @@ public class LV10LandmarkBuilder : MonoBehaviour
     {
         PrepareMapRoot();
         ClearMapRootChildren();
+        ClearStandaloneClockOrbitPlatforms();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
@@ -256,6 +290,13 @@ public class LV10LandmarkBuilder : MonoBehaviour
         artPanelHeight = Mathf.Max(12, artPanelHeight);
         enemyPlatformHalfWidth = Mathf.Max(4, enemyPlatformHalfWidth);
         enemyPlatformForwardLength = Mathf.Max(2, enemyPlatformForwardLength);
+        clockOrbitCenterY = Mathf.Max(1, clockOrbitCenterY);
+        clockOrbitCenterZ = Mathf.Clamp(clockOrbitCenterZ, 2, groundFrontDepth - 2);
+        clockOrbitRadius = Mathf.Max(0.2f, clockOrbitRadius);
+        clockOrbitCycleDuration = Mathf.Max(0.2f, clockOrbitCycleDuration);
+        clockOrbitDepthBobAmplitude = Mathf.Max(0f, clockOrbitDepthBobAmplitude);
+        clockOrbitDepthBobFrequency = Mathf.Max(0f, clockOrbitDepthBobFrequency);
+        clockOrbitPhaseOffsetDegrees = Mathf.Repeat(clockOrbitPhaseOffsetDegrees, 360f);
         TryAutoAssignPrefabs();
     }
 
@@ -485,6 +526,186 @@ public class LV10LandmarkBuilder : MonoBehaviour
                 SpawnBlock(accentPrefab, -4, 1, z, $"PathAccentL_{z}");
                 SpawnBlock(accentPrefab, 4, 1, z, $"PathAccentR_{z}");
             }
+        }
+    }
+
+    private void BuildClockOrbitPlatforms()
+    {
+        if (!buildClockOrbitPlatforms)
+        {
+            ClearStandaloneClockOrbitPlatforms();
+            return;
+        }
+
+        GameObject platformPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
+        if (platformPrefab == null)
+        {
+            return;
+        }
+
+        EnsureClockOrbitPlatform(clockOrbitBlockAName, 0, clockOrbitPassengerA, platformPrefab);
+        EnsureClockOrbitPlatform(clockOrbitBlockBName, 1, clockOrbitPassengerB, platformPrefab);
+        EnsureClockOrbitPlatform(clockOrbitBlockCName, 2, clockOrbitPassengerC, platformPrefab);
+        EnsureClockOrbitPlatform(clockOrbitBlockDName, 3, clockOrbitPassengerD, platformPrefab);
+        EnsureClockOrbitPlatform(clockOrbitBlockEName, 4, clockOrbitPassengerE, platformPrefab);
+        EnsureClockOrbitPlatform(clockOrbitBlockFName, 5, clockOrbitPassengerF, platformPrefab);
+    }
+
+    private void EnsureClockOrbitPlatform(
+        string objectName,
+        int index,
+        Transform assignedPassenger,
+        GameObject platformPrefab)
+    {
+        if (platformPrefab == null || string.IsNullOrWhiteSpace(objectName))
+        {
+            return;
+        }
+
+        Transform existing = FindStandaloneClockOrbitObjectInCurrentScene(objectName);
+        GameObject platform;
+        bool createdNew = false;
+
+        if (existing != null)
+        {
+            platform = existing.gameObject;
+        }
+        else
+        {
+            createdNew = true;
+            platform = Instantiate(platformPrefab);
+            platform.transform.position = Vector3.zero;
+
+            if (normalizePrefabScaleToCell)
+            {
+                Vector3 scaleMultiplier = GetScaleMultiplier(platformPrefab, platform);
+                platform.transform.localScale = Vector3.Scale(platform.transform.localScale, scaleMultiplier);
+            }
+
+            platform.name = objectName;
+        }
+
+        if (createdNew || !keepManualClockOrbitTransform)
+        {
+            AlignBlockToGrid(platform, clockOrbitCenterX, clockOrbitCenterY, clockOrbitCenterZ);
+        }
+
+        EnsureCollider(platform);
+        RemoveComponentIfPresent<RadialShuttleCloudPlatform>(platform);
+        RemoveComponentIfPresent<VerticalWaveCloudPlatform>(platform);
+
+        FigureEightCloudPlatform mover = platform.GetComponent<FigureEightCloudPlatform>();
+        bool createdMover = false;
+        if (mover == null)
+        {
+            mover = platform.AddComponent<FigureEightCloudPlatform>();
+            createdMover = true;
+        }
+
+        bool shouldApplyBuilderMotion = createdNew || createdMover || !keepManualClockOrbitMotionSettings;
+        if (shouldApplyBuilderMotion)
+        {
+            bool reverse = reverseLastThreeBlocks && index >= 3;
+            float phaseDegrees;
+            if (reverseLastThreeBlocks)
+            {
+                float groupPhase = (index % 3) * 120f;
+                phaseDegrees = clockOrbitPhaseOffsetDegrees + groupPhase + (reverse ? 180f : 0f);
+            }
+            else
+            {
+                phaseDegrees = clockOrbitPhaseOffsetDegrees + (index * 60f);
+            }
+
+            phaseDegrees = Mathf.Repeat(phaseDegrees, 360f);
+            mover.Configure(
+                radiusX: clockOrbitRadius,
+                radiusZ: clockOrbitRadius,
+                cycleDuration: clockOrbitCycleDuration,
+                bobAmplitude: clockOrbitDepthBobAmplitude,
+                bobFrequency: clockOrbitDepthBobFrequency,
+                assignedPassenger: assignedPassenger,
+                plane: clockOrbitPlane,
+                reverse: reverse,
+                shape: FigureEightCloudPlatform.PathShape.Circle,
+                phaseDegrees: phaseDegrees,
+                flipIntervalSeconds: 0f);
+        }
+    }
+
+    private void ClearStandaloneClockOrbitPlatforms()
+    {
+        ClearStandaloneClockOrbitPlatform(clockOrbitBlockAName);
+        ClearStandaloneClockOrbitPlatform(clockOrbitBlockBName);
+        ClearStandaloneClockOrbitPlatform(clockOrbitBlockCName);
+        ClearStandaloneClockOrbitPlatform(clockOrbitBlockDName);
+        ClearStandaloneClockOrbitPlatform(clockOrbitBlockEName);
+        ClearStandaloneClockOrbitPlatform(clockOrbitBlockFName);
+    }
+
+    private void ClearStandaloneClockOrbitPlatform(string objectName)
+    {
+        Transform existing = FindStandaloneClockOrbitObjectInCurrentScene(objectName);
+        if (existing == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(existing.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(existing.gameObject);
+        }
+    }
+
+    private Transform FindStandaloneClockOrbitObjectInCurrentScene(string objectName)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+        {
+            return null;
+        }
+
+        Scene scene = gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            return null;
+        }
+
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            if (roots[i].name == objectName)
+            {
+                return roots[i].transform;
+            }
+        }
+
+        return null;
+    }
+
+    private void RemoveComponentIfPresent<T>(GameObject target) where T : Component
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        T component = target.GetComponent<T>();
+        if (component == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(component);
+        }
+        else
+        {
+            DestroyImmediate(component);
         }
     }
 
@@ -787,3 +1008,4 @@ public class LV10LandmarkBuilder : MonoBehaviour
         return true;
     }
 }
+
