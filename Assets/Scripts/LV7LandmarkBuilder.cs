@@ -42,6 +42,33 @@ public class LV7LandmarkBuilder : MonoBehaviour
     [SerializeField] private int enemyPlatformY = 0;
     [SerializeField] private int enemyPlatformCenterX = 0;
 
+    [Header("Boomerang Trajectory Platforms (LV7)")]
+    [SerializeField] private bool buildBoomerangTrajectoryPlatforms = true;
+    [SerializeField] private bool keepManualTrajectoryPlatformTransform = true;
+    [SerializeField] private string trajectoryPlatformAName = "LV7_Trajectory_A";
+    [SerializeField] private string trajectoryPlatformBName = "LV7_Trajectory_B";
+    [SerializeField] private string trajectoryPlatformCName = "LV7_Trajectory_C";
+    [SerializeField] private int trajectoryCenterX = 0;
+    [SerializeField] private int trajectoryCenterY = 4;
+    [SerializeField] private int trajectoryCenterZ = 10;
+    [SerializeField] private int trajectoryLaneSpacing = 6;
+    [SerializeField] private float trajectoryRadiusX = 2.8f;
+    [SerializeField] private float trajectoryRadiusZ = 1.4f;
+    [SerializeField] private float trajectoryCycleDuration = 5.4f;
+    [SerializeField] private float trajectoryBobAmplitude = 0.18f;
+    [SerializeField] private float trajectoryBobFrequency = 1.1f;
+    [SerializeField] private float trajectoryFlipInterval = 2.8f;
+    [SerializeField] private FigureEightCloudPlatform.FigureEightPlane trajectoryPlane = FigureEightCloudPlatform.FigureEightPlane.FrontXY;
+    [SerializeField] private Transform trajectoryPlatformAPassenger;
+    [SerializeField] private Transform trajectoryPlatformBPassenger;
+    [SerializeField] private Transform trajectoryPlatformCPassenger;
+    [SerializeField] private float shuttleInnerRadius = 0.8f;
+    [SerializeField] private float shuttleOuterRadius = 3.8f;
+    [SerializeField] private float shuttleCycleDuration = 3.6f;
+    [SerializeField] private Vector3 shuttleAxis = Vector3.right;
+    [SerializeField] private float shuttleBobAmplitude = 0.1f;
+    [SerializeField] private float shuttleBobFrequency = 1.3f;
+
     [Header("Block Prefabs")]
     [SerializeField] private GameObject cobblestonePrefab;
     [SerializeField] private GameObject minecraftCubePrefab;
@@ -218,6 +245,7 @@ public class LV7LandmarkBuilder : MonoBehaviour
         BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
+        BuildBoomerangTrajectoryPlatforms();
         Build2DArtPanel();
         BuildGoldenGatePixelArt();
         BuildSeaAndSky();
@@ -233,6 +261,7 @@ public class LV7LandmarkBuilder : MonoBehaviour
     {
         PrepareMapRoot();
         ClearMapRootChildren();
+        ClearStandaloneTrajectoryPlatforms();
 #if UNITY_EDITOR
         EditorSceneManager.MarkSceneDirty(gameObject.scene);
 #endif
@@ -256,6 +285,23 @@ public class LV7LandmarkBuilder : MonoBehaviour
         artPanelHeight = Mathf.Max(12, artPanelHeight);
         enemyPlatformHalfWidth = Mathf.Max(4, enemyPlatformHalfWidth);
         enemyPlatformForwardLength = Mathf.Max(2, enemyPlatformForwardLength);
+        trajectoryCenterY = Mathf.Max(1, trajectoryCenterY);
+        trajectoryLaneSpacing = Mathf.Max(2, trajectoryLaneSpacing);
+        trajectoryRadiusX = Mathf.Max(0.2f, trajectoryRadiusX);
+        trajectoryRadiusZ = Mathf.Max(0.2f, trajectoryRadiusZ);
+        trajectoryCycleDuration = Mathf.Max(0.2f, trajectoryCycleDuration);
+        trajectoryBobAmplitude = Mathf.Max(0f, trajectoryBobAmplitude);
+        trajectoryBobFrequency = Mathf.Max(0f, trajectoryBobFrequency);
+        trajectoryFlipInterval = Mathf.Max(0f, trajectoryFlipInterval);
+        shuttleInnerRadius = Mathf.Max(0f, shuttleInnerRadius);
+        shuttleOuterRadius = Mathf.Max(shuttleInnerRadius + 0.1f, shuttleOuterRadius);
+        shuttleCycleDuration = Mathf.Max(0.2f, shuttleCycleDuration);
+        shuttleBobAmplitude = Mathf.Max(0f, shuttleBobAmplitude);
+        shuttleBobFrequency = Mathf.Max(0f, shuttleBobFrequency);
+        if (shuttleAxis.sqrMagnitude <= 0.0001f)
+        {
+            shuttleAxis = Vector3.right;
+        }
         TryAutoAssignPrefabs();
     }
 
@@ -485,6 +531,251 @@ public class LV7LandmarkBuilder : MonoBehaviour
                 SpawnBlock(accentPrefab, -4, 1, z, $"PathAccentL_{z}");
                 SpawnBlock(accentPrefab, 4, 1, z, $"PathAccentR_{z}");
             }
+        }
+    }
+
+    private void BuildBoomerangTrajectoryPlatforms()
+    {
+        if (!buildBoomerangTrajectoryPlatforms)
+        {
+            ClearStandaloneTrajectoryPlatforms();
+            return;
+        }
+
+        GameObject platformPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
+        EnsureFigureEightTrajectoryPlatform(
+            trajectoryPlatformAName,
+            laneIndex: -1,
+            phaseDegrees: 0f,
+            shape: FigureEightCloudPlatform.PathShape.FigureEight,
+            reverseDirection: false,
+            flipIntervalSeconds: 0f,
+            assignedPassenger: trajectoryPlatformAPassenger,
+            platformPrefab: platformPrefab);
+
+        EnsureFigureEightTrajectoryPlatform(
+            trajectoryPlatformBName,
+            laneIndex: 0,
+            phaseDegrees: 90f,
+            shape: FigureEightCloudPlatform.PathShape.Circle,
+            reverseDirection: false,
+            flipIntervalSeconds: trajectoryFlipInterval,
+            assignedPassenger: trajectoryPlatformBPassenger,
+            platformPrefab: platformPrefab);
+
+        EnsureShuttleTrajectoryPlatform(
+            trajectoryPlatformCName,
+            laneIndex: 1,
+            assignedPassenger: trajectoryPlatformCPassenger,
+            platformPrefab: platformPrefab);
+    }
+
+    private void EnsureFigureEightTrajectoryPlatform(
+        string objectName,
+        int laneIndex,
+        float phaseDegrees,
+        FigureEightCloudPlatform.PathShape shape,
+        bool reverseDirection,
+        float flipIntervalSeconds,
+        Transform assignedPassenger,
+        GameObject platformPrefab)
+    {
+        if (platformPrefab == null || string.IsNullOrWhiteSpace(objectName))
+        {
+            return;
+        }
+
+        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
+        GameObject platform;
+        bool createdNew = false;
+
+        if (existing != null)
+        {
+            platform = existing.gameObject;
+        }
+        else
+        {
+            createdNew = true;
+            platform = Instantiate(platformPrefab);
+            platform.transform.position = Vector3.zero;
+
+            if (normalizePrefabScaleToCell)
+            {
+                Vector3 scaleMultiplier = GetScaleMultiplier(platformPrefab, platform);
+                platform.transform.localScale = Vector3.Scale(platform.transform.localScale, scaleMultiplier);
+            }
+
+            platform.name = objectName;
+        }
+
+        if (createdNew || !keepManualTrajectoryPlatformTransform)
+        {
+            AlignBlockToGrid(
+                platform,
+                trajectoryCenterX + (laneIndex * trajectoryLaneSpacing),
+                trajectoryCenterY,
+                trajectoryCenterZ);
+        }
+
+        EnsureCollider(platform);
+        RemoveComponentIfPresent<RadialShuttleCloudPlatform>(platform);
+
+        FigureEightCloudPlatform mover = platform.GetComponent<FigureEightCloudPlatform>();
+        if (mover == null)
+        {
+            mover = platform.AddComponent<FigureEightCloudPlatform>();
+        }
+
+        float laneRadiusMultiplier = laneIndex == 0 ? 1.1f : 1f;
+        float laneDurationMultiplier = laneIndex == 0 ? 0.85f : 1f;
+        mover.Configure(
+            radiusX: trajectoryRadiusX * laneRadiusMultiplier,
+            radiusZ: trajectoryRadiusZ,
+            cycleDuration: trajectoryCycleDuration * laneDurationMultiplier,
+            bobAmplitude: trajectoryBobAmplitude,
+            bobFrequency: trajectoryBobFrequency,
+            assignedPassenger: assignedPassenger,
+            plane: trajectoryPlane,
+            reverse: reverseDirection,
+            shape: shape,
+            phaseDegrees: phaseDegrees,
+            flipIntervalSeconds: flipIntervalSeconds);
+    }
+
+    private void EnsureShuttleTrajectoryPlatform(
+        string objectName,
+        int laneIndex,
+        Transform assignedPassenger,
+        GameObject platformPrefab)
+    {
+        if (platformPrefab == null || string.IsNullOrWhiteSpace(objectName))
+        {
+            return;
+        }
+
+        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
+        GameObject platform;
+        bool createdNew = false;
+
+        if (existing != null)
+        {
+            platform = existing.gameObject;
+        }
+        else
+        {
+            createdNew = true;
+            platform = Instantiate(platformPrefab);
+            platform.transform.position = Vector3.zero;
+
+            if (normalizePrefabScaleToCell)
+            {
+                Vector3 scaleMultiplier = GetScaleMultiplier(platformPrefab, platform);
+                platform.transform.localScale = Vector3.Scale(platform.transform.localScale, scaleMultiplier);
+            }
+
+            platform.name = objectName;
+        }
+
+        if (createdNew || !keepManualTrajectoryPlatformTransform)
+        {
+            AlignBlockToGrid(
+                platform,
+                trajectoryCenterX + (laneIndex * trajectoryLaneSpacing),
+                trajectoryCenterY,
+                trajectoryCenterZ);
+        }
+
+        EnsureCollider(platform);
+        RemoveComponentIfPresent<FigureEightCloudPlatform>(platform);
+
+        RadialShuttleCloudPlatform mover = platform.GetComponent<RadialShuttleCloudPlatform>();
+        if (mover == null)
+        {
+            mover = platform.AddComponent<RadialShuttleCloudPlatform>();
+        }
+
+        mover.Configure(
+            innerRadius: shuttleInnerRadius,
+            outerRadius: shuttleOuterRadius,
+            cycleDuration: shuttleCycleDuration,
+            bobAmplitude: shuttleBobAmplitude,
+            bobFrequency: shuttleBobFrequency,
+            radialAxis: shuttleAxis,
+            plane: trajectoryPlane,
+            flipIntervalSeconds: trajectoryFlipInterval,
+            assignedPassenger: assignedPassenger);
+    }
+
+    private void ClearStandaloneTrajectoryPlatforms()
+    {
+        ClearStandaloneTrajectoryPlatform(trajectoryPlatformAName);
+        ClearStandaloneTrajectoryPlatform(trajectoryPlatformBName);
+        ClearStandaloneTrajectoryPlatform(trajectoryPlatformCName);
+    }
+
+    private void ClearStandaloneTrajectoryPlatform(string objectName)
+    {
+        Transform existing = FindStandaloneObjectInCurrentScene(objectName);
+        if (existing == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(existing.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(existing.gameObject);
+        }
+    }
+
+    private Transform FindStandaloneObjectInCurrentScene(string objectName)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+        {
+            return null;
+        }
+
+        Scene scene = gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            return null;
+        }
+
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            if (roots[i].name == objectName)
+            {
+                return roots[i].transform;
+            }
+        }
+
+        return null;
+    }
+
+    private void RemoveComponentIfPresent<T>(GameObject target) where T : Component
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        T component = target.GetComponent<T>();
+        if (component == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(component);
+        }
+        else
+        {
+            DestroyImmediate(component);
         }
     }
 

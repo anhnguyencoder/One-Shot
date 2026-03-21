@@ -36,7 +36,7 @@ public class LV6LandmarkBuilder : MonoBehaviour
     [SerializeField] private bool buildPanelBehindArt = true;
 
     [Header("Enemy Front Platform")]
-    [SerializeField] private bool buildEnemyFrontPlatform = true;
+    [SerializeField] private bool buildEnemyFrontPlatform = false;
     [SerializeField] private int enemyPlatformHalfWidth = 10;
     [SerializeField] private int enemyPlatformForwardLength = 10;
     [SerializeField] private int enemyPlatformY = 0;
@@ -50,6 +50,7 @@ public class LV6LandmarkBuilder : MonoBehaviour
     [SerializeField] private string orbitCloudCName = "LV6_Cloud_C";
     [SerializeField] private string orbitCloudDName = "LV6_Cloud_D";
     [SerializeField] private string orbitCloudCoreName = "LV6_Cloud_Core";
+    [SerializeField] private bool buildCoreShuttleCloud = false;
     [SerializeField] private int orbitCenterX = 0;
     [SerializeField] private int orbitCenterY = 4;
     [SerializeField] private int orbitCenterZ = 10;
@@ -67,7 +68,7 @@ public class LV6LandmarkBuilder : MonoBehaviour
     [SerializeField] private float coreInnerRadius = 1.2f;
     [SerializeField] private float coreOuterRadius = 4.8f;
     [SerializeField] private float coreShuttleDuration = 4f;
-    [SerializeField] private Vector3 coreRadialAxis = Vector3.right;
+    [SerializeField] private Vector3 coreRadialAxis = Vector3.up;
     [SerializeField] private float coreBobAmplitude = 0.08f;
     [SerializeField] private float coreBobFrequency = 1.2f;
 
@@ -306,7 +307,7 @@ public class LV6LandmarkBuilder : MonoBehaviour
         coreBobFrequency = Mathf.Max(0f, coreBobFrequency);
         if (coreRadialAxis.sqrMagnitude <= 0.0001f)
         {
-            coreRadialAxis = Vector3.right;
+            coreRadialAxis = Vector3.up;
         }
         if (string.IsNullOrWhiteSpace(orbitCloudAName))
         {
@@ -589,7 +590,14 @@ public class LV6LandmarkBuilder : MonoBehaviour
         EnsureOrbitCloudPlatform(orbitCloudBName, 90f, orbitCloudBPassenger, cloudPrefab);
         EnsureOrbitCloudPlatform(orbitCloudCName, 180f, orbitCloudCPassenger, cloudPrefab);
         EnsureOrbitCloudPlatform(orbitCloudDName, 270f, orbitCloudDPassenger, cloudPrefab);
-        EnsureRadialShuttleCloud(orbitCloudCoreName, orbitCloudCorePassenger, cloudPrefab);
+        if (buildCoreShuttleCloud)
+        {
+            EnsureRadialShuttleCloud(orbitCloudCoreName, orbitCloudCorePassenger, cloudPrefab);
+        }
+        else
+        {
+            ClearStandaloneCloudPlatform(orbitCloudCoreName);
+        }
     }
 
     private void EnsureOrbitCloudPlatform(
