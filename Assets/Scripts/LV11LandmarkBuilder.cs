@@ -42,6 +42,31 @@ public class LV11LandmarkBuilder : MonoBehaviour
     [SerializeField] private int enemyPlatformY = 0;
     [SerializeField] private int enemyPlatformCenterX = 0;
 
+    [Header("Leaning Lissajous Clouds (LV11)")]
+    [SerializeField] private bool buildLeaningLissajousClouds = true;
+    [SerializeField] private bool keepManualLissajousTransform = false;
+    [SerializeField] private bool keepManualLissajousMotionSettings = true;
+    [SerializeField] private int lissajousCenterX = -1;
+    [SerializeField] private int lissajousCenterY = 5;
+    [SerializeField] private int lissajousCenterZ = 12;
+    [SerializeField] private int lissajousLayerSpacingZ = 2;
+    [SerializeField] private float lissajousRadiusX = 2.8f;
+    [SerializeField] private float lissajousRadiusY = 2.3f;
+    [SerializeField] private float lissajousCycleDuration = 19.5f;
+    [SerializeField] private float lissajousDepthBobAmplitude = 0.06f;
+    [SerializeField] private float lissajousDepthBobFrequency = 1f;
+    [SerializeField] private float lissajousPhaseOffsetDegrees = 0f;
+    [SerializeField] private bool reverseAlternatingLissajous = true;
+    [SerializeField] private FigureEightCloudPlatform.FigureEightPlane lissajousPlane = FigureEightCloudPlatform.FigureEightPlane.FrontXY;
+    [SerializeField] private string lissajousCloudAName = "LV11_Lissajous_A";
+    [SerializeField] private string lissajousCloudBName = "LV11_Lissajous_B";
+    [SerializeField] private string lissajousCloudCName = "LV11_Lissajous_C";
+    [SerializeField] private string lissajousCloudDName = "LV11_Lissajous_D";
+    [SerializeField] private Transform lissajousPassengerA;
+    [SerializeField] private Transform lissajousPassengerB;
+    [SerializeField] private Transform lissajousPassengerC;
+    [SerializeField] private Transform lissajousPassengerD;
+
     [Header("Block Prefabs")]
     [SerializeField] private GameObject cobblestonePrefab;
     [SerializeField] private GameObject minecraftCubePrefab;
@@ -218,6 +243,7 @@ public class LV11LandmarkBuilder : MonoBehaviour
         BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
+        BuildLeaningLissajousCloudPlatforms();
         Build2DArtPanel();
         BuildPisaTowerPixelArt();
         BuildTuscanForegroundAndSky();
@@ -233,6 +259,7 @@ public class LV11LandmarkBuilder : MonoBehaviour
     {
         PrepareMapRoot();
         ClearMapRootChildren();
+        ClearStandaloneLissajousClouds();
 #if UNITY_EDITOR
         EditorSceneManager.MarkSceneDirty(gameObject.scene);
 #endif
@@ -256,6 +283,43 @@ public class LV11LandmarkBuilder : MonoBehaviour
         artPanelHeight = Mathf.Max(12, artPanelHeight);
         enemyPlatformHalfWidth = Mathf.Max(4, enemyPlatformHalfWidth);
         enemyPlatformForwardLength = Mathf.Max(2, enemyPlatformForwardLength);
+        lissajousCenterY = Mathf.Max(1, lissajousCenterY);
+        lissajousCenterZ = Mathf.Clamp(lissajousCenterZ, 2, groundFrontDepth - 2);
+        lissajousLayerSpacingZ = Mathf.Max(1, lissajousLayerSpacingZ);
+        lissajousRadiusX = Mathf.Max(0.2f, lissajousRadiusX);
+        lissajousRadiusY = Mathf.Max(0.2f, lissajousRadiusY);
+        lissajousCycleDuration = Mathf.Max(0.2f, lissajousCycleDuration);
+        lissajousDepthBobAmplitude = Mathf.Max(0f, lissajousDepthBobAmplitude);
+        lissajousDepthBobFrequency = Mathf.Max(0f, lissajousDepthBobFrequency);
+        lissajousPhaseOffsetDegrees = Mathf.Repeat(lissajousPhaseOffsetDegrees, 360f);
+        if (string.IsNullOrWhiteSpace(lissajousCloudAName))
+        {
+            lissajousCloudAName = "LV11_Lissajous_A";
+        }
+        if (string.IsNullOrWhiteSpace(lissajousCloudBName))
+        {
+            lissajousCloudBName = "LV11_Lissajous_B";
+        }
+        if (string.IsNullOrWhiteSpace(lissajousCloudCName))
+        {
+            lissajousCloudCName = "LV11_Lissajous_C";
+        }
+        if (string.IsNullOrWhiteSpace(lissajousCloudDName))
+        {
+            lissajousCloudDName = "LV11_Lissajous_D";
+        }
+        if (lissajousCloudBName == lissajousCloudAName)
+        {
+            lissajousCloudBName = lissajousCloudAName + "_B";
+        }
+        if (lissajousCloudCName == lissajousCloudAName || lissajousCloudCName == lissajousCloudBName)
+        {
+            lissajousCloudCName = "LV11_Lissajous_C";
+        }
+        if (lissajousCloudDName == lissajousCloudAName || lissajousCloudDName == lissajousCloudBName || lissajousCloudDName == lissajousCloudCName)
+        {
+            lissajousCloudDName = "LV11_Lissajous_D";
+        }
         TryAutoAssignPrefabs();
     }
 
@@ -485,6 +549,179 @@ public class LV11LandmarkBuilder : MonoBehaviour
                 SpawnBlock(accentPrefab, -4, 1, z, $"PathAccentL_{z}");
                 SpawnBlock(accentPrefab, 4, 1, z, $"PathAccentR_{z}");
             }
+        }
+    }
+
+    private void BuildLeaningLissajousCloudPlatforms()
+    {
+        if (!buildLeaningLissajousClouds)
+        {
+            ClearStandaloneLissajousClouds();
+            return;
+        }
+
+        GameObject cloudPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
+        if (cloudPrefab == null)
+        {
+            return;
+        }
+
+        EnsureLissajousCloudPlatform(lissajousCloudAName, 0, lissajousPassengerA, cloudPrefab);
+        EnsureLissajousCloudPlatform(lissajousCloudBName, 1, lissajousPassengerB, cloudPrefab);
+        EnsureLissajousCloudPlatform(lissajousCloudCName, 2, lissajousPassengerC, cloudPrefab);
+        EnsureLissajousCloudPlatform(lissajousCloudDName, 3, lissajousPassengerD, cloudPrefab);
+    }
+
+    private void EnsureLissajousCloudPlatform(
+        string objectName,
+        int index,
+        Transform assignedPassenger,
+        GameObject cloudPrefab)
+    {
+        if (cloudPrefab == null || string.IsNullOrWhiteSpace(objectName))
+        {
+            return;
+        }
+
+        Transform existing = FindStandaloneLissajousObjectInCurrentScene(objectName);
+        GameObject cloud;
+        bool createdNew = false;
+
+        if (existing != null)
+        {
+            cloud = existing.gameObject;
+        }
+        else
+        {
+            createdNew = true;
+            cloud = Instantiate(cloudPrefab);
+            cloud.transform.position = Vector3.zero;
+
+            if (normalizePrefabScaleToCell)
+            {
+                Vector3 scaleMultiplier = GetScaleMultiplier(cloudPrefab, cloud);
+                cloud.transform.localScale = Vector3.Scale(cloud.transform.localScale, scaleMultiplier);
+            }
+
+            cloud.name = objectName;
+        }
+
+        if (createdNew || !keepManualLissajousTransform)
+        {
+            AlignBlockToGrid(cloud, lissajousCenterX, lissajousCenterY, ResolveLissajousLayerZ(index));
+        }
+
+        EnsureCollider(cloud);
+        RemoveComponentIfPresent<RadialShuttleCloudPlatform>(cloud);
+        RemoveComponentIfPresent<VerticalWaveCloudPlatform>(cloud);
+        RemoveComponentIfPresent<FlyingMinecraftCloudPlatform>(cloud);
+
+        FigureEightCloudPlatform mover = cloud.GetComponent<FigureEightCloudPlatform>();
+        bool createdMover = false;
+        if (mover == null)
+        {
+            mover = cloud.AddComponent<FigureEightCloudPlatform>();
+            createdMover = true;
+        }
+
+        bool shouldApplyBuilderMotion = createdNew || createdMover || !keepManualLissajousMotionSettings;
+        if (shouldApplyBuilderMotion)
+        {
+            bool reverse = reverseAlternatingLissajous && ((index & 1) == 1);
+            float phaseDegrees = Mathf.Repeat(lissajousPhaseOffsetDegrees + (index * 90f), 360f);
+            mover.Configure(
+                radiusX: lissajousRadiusX,
+                radiusZ: lissajousRadiusY,
+                cycleDuration: lissajousCycleDuration,
+                bobAmplitude: lissajousDepthBobAmplitude,
+                bobFrequency: lissajousDepthBobFrequency,
+                assignedPassenger: assignedPassenger,
+                plane: lissajousPlane,
+                reverse: reverse,
+                shape: FigureEightCloudPlatform.PathShape.Lissajous,
+                phaseDegrees: phaseDegrees,
+                flipIntervalSeconds: 0f);
+        }
+    }
+
+    private void ClearStandaloneLissajousClouds()
+    {
+        ClearStandaloneLissajousCloud(lissajousCloudAName);
+        ClearStandaloneLissajousCloud(lissajousCloudBName);
+        ClearStandaloneLissajousCloud(lissajousCloudCName);
+        ClearStandaloneLissajousCloud(lissajousCloudDName);
+    }
+
+    private int ResolveLissajousLayerZ(int index)
+    {
+        int offset = (index * lissajousLayerSpacingZ) - ((3 * lissajousLayerSpacingZ) / 2);
+        int z = lissajousCenterZ + offset;
+        return Mathf.Clamp(z, 2, groundFrontDepth - 2);
+    }
+
+    private void ClearStandaloneLissajousCloud(string objectName)
+    {
+        Transform existing = FindStandaloneLissajousObjectInCurrentScene(objectName);
+        if (existing == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(existing.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(existing.gameObject);
+        }
+    }
+
+    private Transform FindStandaloneLissajousObjectInCurrentScene(string objectName)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+        {
+            return null;
+        }
+
+        Scene scene = gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            return null;
+        }
+
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            if (roots[i].name == objectName)
+            {
+                return roots[i].transform;
+            }
+        }
+
+        return null;
+    }
+
+    private void RemoveComponentIfPresent<T>(GameObject target) where T : Component
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        T component = target.GetComponent<T>();
+        if (component == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(component);
+        }
+        else
+        {
+            DestroyImmediate(component);
         }
     }
 
