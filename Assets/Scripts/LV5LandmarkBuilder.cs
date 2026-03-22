@@ -277,8 +277,6 @@ public class LV5LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildEntranceRoad();
         BuildFlyingCloudPlatforms();

@@ -214,8 +214,6 @@ public class LV14LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
         Build2DArtPanel();

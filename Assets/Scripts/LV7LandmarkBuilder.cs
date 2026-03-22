@@ -233,8 +233,6 @@ public class LV7LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
         BuildWaveTrajectoryPlatforms();

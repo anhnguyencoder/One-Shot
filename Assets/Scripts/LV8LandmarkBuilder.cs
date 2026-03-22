@@ -236,8 +236,6 @@ public class LV8LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
         BuildRoseCloudPlatforms();

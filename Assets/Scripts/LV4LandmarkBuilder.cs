@@ -246,8 +246,6 @@ public class LV4LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildCeremonialPath();
         if (use2DPixelArtMode)

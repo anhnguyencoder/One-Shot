@@ -257,8 +257,6 @@ public class LV12LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
         BuildTriArcLissajousCloudPlatforms();

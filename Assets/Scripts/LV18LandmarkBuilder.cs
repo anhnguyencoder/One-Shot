@@ -214,8 +214,6 @@ public class LV18LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
         Build2DArtPanel();
@@ -580,18 +578,9 @@ public class LV18LandmarkBuilder : MonoBehaviour
 
     private void BuildAegeanSkyAndGround()
     {
-        GameObject groundPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
         GameObject cloudPrefab = PickPrefab(cobblestonePrefab, minecraftCubePrefab, tntBlockPrefab);
         GameObject accentPrefab = PickPrefab(tntBlockPrefab, minecraftCubePrefab, cobblestonePrefab);
         int z = artPlaneZ;
-
-        for (int x = -20; x <= 20; x++)
-        {
-            if ((x & 1) == 0)
-            {
-                SpawnBlock(groundPrefab, x, artBaseY + 1, z, $"Ground_{x}");
-            }
-        }
 
         for (int x = -18; x <= 18; x += 6)
         {

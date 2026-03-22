@@ -239,8 +239,6 @@ public class LV1LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildCauseway();
 
         if (use2DPixelArtMode)

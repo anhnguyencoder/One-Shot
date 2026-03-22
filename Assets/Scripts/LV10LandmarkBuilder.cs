@@ -249,8 +249,6 @@ public class LV10LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
         BuildClockOrbitPlatforms();

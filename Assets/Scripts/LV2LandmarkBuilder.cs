@@ -231,8 +231,6 @@ public class LV2LandmarkBuilder : MonoBehaviour
         {
             ClearMapRootChildren();
         }
-
-        BuildGround();
         BuildCeremonialRoad();
 
         if (use2DPixelArtMode)

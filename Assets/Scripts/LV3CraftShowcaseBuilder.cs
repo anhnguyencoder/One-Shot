@@ -219,7 +219,6 @@ public class LV3CraftShowcaseBuilder : MonoBehaviour
         }
         else
         {
-            BuildGround();
             BuildRunway();
             BuildPerformerPads();
             BuildSidePillars();
