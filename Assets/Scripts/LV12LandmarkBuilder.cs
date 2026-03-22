@@ -42,6 +42,49 @@ public class LV12LandmarkBuilder : MonoBehaviour
     [SerializeField] private int enemyPlatformY = 0;
     [SerializeField] private int enemyPlatformCenterX = 0;
 
+    [Header("Tri-Arc Lissajous Clouds (LV12)")]
+    [SerializeField] private bool buildTriArcLissajousClouds = true;
+    [SerializeField] private bool keepManualTriArcCloudTransform = false;
+    [SerializeField] private bool keepManualTriArcCloudMotionSettings = true;
+    [SerializeField] private int triArcCloudAX = -6;
+    [SerializeField] private int triArcCloudAY = 5;
+    [SerializeField] private int triArcCloudAZ = 10;
+    [SerializeField] private int triArcCloudBX = -6;
+    [SerializeField] private int triArcCloudBY = 5;
+    [SerializeField] private int triArcCloudBZ = 14;
+    [SerializeField] private int triArcCloudCX = 0;
+    [SerializeField] private int triArcCloudCY = 6;
+    [SerializeField] private int triArcCloudCZ = 11;
+    [SerializeField] private int triArcCloudDX = 0;
+    [SerializeField] private int triArcCloudDY = 6;
+    [SerializeField] private int triArcCloudDZ = 15;
+    [SerializeField] private int triArcCloudEX = 6;
+    [SerializeField] private int triArcCloudEY = 5;
+    [SerializeField] private int triArcCloudEZ = 10;
+    [SerializeField] private int triArcCloudFX = 6;
+    [SerializeField] private int triArcCloudFY = 5;
+    [SerializeField] private int triArcCloudFZ = 14;
+    [SerializeField] private float triArcRadiusX = 1.9f;
+    [SerializeField] private float triArcRadiusY = 2.2f;
+    [SerializeField] private float triArcCycleDuration = 17.5f;
+    [SerializeField] private float triArcDepthBobAmplitude = 0.04f;
+    [SerializeField] private float triArcDepthBobFrequency = 1f;
+    [SerializeField] private float triArcPhaseOffsetDegrees = 0f;
+    [SerializeField] private bool reverseAlternatingTriArcClouds = true;
+    [SerializeField] private FigureEightCloudPlatform.FigureEightPlane triArcPlane = FigureEightCloudPlatform.FigureEightPlane.FrontXY;
+    [SerializeField] private string triArcCloudAName = "LV12_TriArc_A";
+    [SerializeField] private string triArcCloudBName = "LV12_TriArc_B";
+    [SerializeField] private string triArcCloudCName = "LV12_TriArc_C";
+    [SerializeField] private string triArcCloudDName = "LV12_TriArc_D";
+    [SerializeField] private string triArcCloudEName = "LV12_TriArc_E";
+    [SerializeField] private string triArcCloudFName = "LV12_TriArc_F";
+    [SerializeField] private Transform triArcPassengerA;
+    [SerializeField] private Transform triArcPassengerB;
+    [SerializeField] private Transform triArcPassengerC;
+    [SerializeField] private Transform triArcPassengerD;
+    [SerializeField] private Transform triArcPassengerE;
+    [SerializeField] private Transform triArcPassengerF;
+
     [Header("Block Prefabs")]
     [SerializeField] private GameObject cobblestonePrefab;
     [SerializeField] private GameObject minecraftCubePrefab;
@@ -218,6 +261,7 @@ public class LV12LandmarkBuilder : MonoBehaviour
         BuildGround();
         BuildEnemyFrontPlatform();
         BuildApproachPath();
+        BuildTriArcLissajousCloudPlatforms();
         Build2DArtPanel();
         BuildArcDeTriomphePixelArt();
         BuildParisForegroundAndSky();
@@ -233,6 +277,7 @@ public class LV12LandmarkBuilder : MonoBehaviour
     {
         PrepareMapRoot();
         ClearMapRootChildren();
+        ClearStandaloneTriArcCloudPlatforms();
 #if UNITY_EDITOR
         EditorSceneManager.MarkSceneDirty(gameObject.scene);
 #endif
@@ -256,6 +301,76 @@ public class LV12LandmarkBuilder : MonoBehaviour
         artPanelHeight = Mathf.Max(12, artPanelHeight);
         enemyPlatformHalfWidth = Mathf.Max(4, enemyPlatformHalfWidth);
         enemyPlatformForwardLength = Mathf.Max(2, enemyPlatformForwardLength);
+        int minCloudX = -groundHalfWidth + 2;
+        int maxCloudX = groundHalfWidth - 2;
+        triArcCloudAX = Mathf.Clamp(triArcCloudAX, minCloudX, maxCloudX);
+        triArcCloudBX = Mathf.Clamp(triArcCloudBX, minCloudX, maxCloudX);
+        triArcCloudCX = Mathf.Clamp(triArcCloudCX, minCloudX, maxCloudX);
+        triArcCloudDX = Mathf.Clamp(triArcCloudDX, minCloudX, maxCloudX);
+        triArcCloudEX = Mathf.Clamp(triArcCloudEX, minCloudX, maxCloudX);
+        triArcCloudFX = Mathf.Clamp(triArcCloudFX, minCloudX, maxCloudX);
+        triArcCloudAY = Mathf.Max(1, triArcCloudAY);
+        triArcCloudBY = Mathf.Max(1, triArcCloudBY);
+        triArcCloudCY = Mathf.Max(1, triArcCloudCY);
+        triArcCloudDY = Mathf.Max(1, triArcCloudDY);
+        triArcCloudEY = Mathf.Max(1, triArcCloudEY);
+        triArcCloudFY = Mathf.Max(1, triArcCloudFY);
+        triArcCloudAZ = Mathf.Clamp(triArcCloudAZ, 2, groundFrontDepth - 2);
+        triArcCloudBZ = Mathf.Clamp(triArcCloudBZ, 2, groundFrontDepth - 2);
+        triArcCloudCZ = Mathf.Clamp(triArcCloudCZ, 2, groundFrontDepth - 2);
+        triArcCloudDZ = Mathf.Clamp(triArcCloudDZ, 2, groundFrontDepth - 2);
+        triArcCloudEZ = Mathf.Clamp(triArcCloudEZ, 2, groundFrontDepth - 2);
+        triArcCloudFZ = Mathf.Clamp(triArcCloudFZ, 2, groundFrontDepth - 2);
+        triArcRadiusX = Mathf.Max(0.2f, triArcRadiusX);
+        triArcRadiusY = Mathf.Max(0.2f, triArcRadiusY);
+        triArcCycleDuration = Mathf.Max(0.2f, triArcCycleDuration);
+        triArcDepthBobAmplitude = Mathf.Max(0f, triArcDepthBobAmplitude);
+        triArcDepthBobFrequency = Mathf.Max(0f, triArcDepthBobFrequency);
+        triArcPhaseOffsetDegrees = Mathf.Repeat(triArcPhaseOffsetDegrees, 360f);
+        if (string.IsNullOrWhiteSpace(triArcCloudAName))
+        {
+            triArcCloudAName = "LV12_TriArc_A";
+        }
+        if (string.IsNullOrWhiteSpace(triArcCloudBName))
+        {
+            triArcCloudBName = "LV12_TriArc_B";
+        }
+        if (string.IsNullOrWhiteSpace(triArcCloudCName))
+        {
+            triArcCloudCName = "LV12_TriArc_C";
+        }
+        if (string.IsNullOrWhiteSpace(triArcCloudDName))
+        {
+            triArcCloudDName = "LV12_TriArc_D";
+        }
+        if (string.IsNullOrWhiteSpace(triArcCloudEName))
+        {
+            triArcCloudEName = "LV12_TriArc_E";
+        }
+        if (string.IsNullOrWhiteSpace(triArcCloudFName))
+        {
+            triArcCloudFName = "LV12_TriArc_F";
+        }
+        if (triArcCloudBName == triArcCloudAName)
+        {
+            triArcCloudBName = triArcCloudAName + "_B";
+        }
+        if (triArcCloudCName == triArcCloudAName || triArcCloudCName == triArcCloudBName)
+        {
+            triArcCloudCName = "LV12_TriArc_C";
+        }
+        if (triArcCloudDName == triArcCloudAName || triArcCloudDName == triArcCloudBName || triArcCloudDName == triArcCloudCName)
+        {
+            triArcCloudDName = "LV12_TriArc_D";
+        }
+        if (triArcCloudEName == triArcCloudAName || triArcCloudEName == triArcCloudBName || triArcCloudEName == triArcCloudCName || triArcCloudEName == triArcCloudDName)
+        {
+            triArcCloudEName = "LV12_TriArc_E";
+        }
+        if (triArcCloudFName == triArcCloudAName || triArcCloudFName == triArcCloudBName || triArcCloudFName == triArcCloudCName || triArcCloudFName == triArcCloudDName || triArcCloudFName == triArcCloudEName)
+        {
+            triArcCloudFName = "LV12_TriArc_F";
+        }
         TryAutoAssignPrefabs();
     }
 
@@ -485,6 +600,209 @@ public class LV12LandmarkBuilder : MonoBehaviour
                 SpawnBlock(accentPrefab, -4, 1, z, $"PathAccentL_{z}");
                 SpawnBlock(accentPrefab, 4, 1, z, $"PathAccentR_{z}");
             }
+        }
+    }
+
+    private void BuildTriArcLissajousCloudPlatforms()
+    {
+        if (!buildTriArcLissajousClouds)
+        {
+            ClearStandaloneTriArcCloudPlatforms();
+            return;
+        }
+
+        GameObject cloudPrefab = PickPrefab(minecraftCubePrefab, cobblestonePrefab, tntBlockPrefab);
+        if (cloudPrefab == null)
+        {
+            return;
+        }
+
+        EnsureTriArcLissajousCloudPlatform(triArcCloudAName, 0, triArcCloudAX, triArcCloudAY, triArcCloudAZ, triArcPassengerA, cloudPrefab);
+        EnsureTriArcLissajousCloudPlatform(triArcCloudBName, 1, triArcCloudBX, triArcCloudBY, triArcCloudBZ, triArcPassengerB, cloudPrefab);
+        EnsureTriArcLissajousCloudPlatform(triArcCloudCName, 2, triArcCloudCX, triArcCloudCY, triArcCloudCZ, triArcPassengerC, cloudPrefab);
+        EnsureTriArcLissajousCloudPlatform(triArcCloudDName, 3, triArcCloudDX, triArcCloudDY, triArcCloudDZ, triArcPassengerD, cloudPrefab);
+        EnsureTriArcLissajousCloudPlatform(triArcCloudEName, 4, triArcCloudEX, triArcCloudEY, triArcCloudEZ, triArcPassengerE, cloudPrefab);
+        EnsureTriArcLissajousCloudPlatform(triArcCloudFName, 5, triArcCloudFX, triArcCloudFY, triArcCloudFZ, triArcPassengerF, cloudPrefab);
+    }
+
+    private void EnsureTriArcLissajousCloudPlatform(
+        string objectName,
+        int index,
+        int startX,
+        int startY,
+        int startZ,
+        Transform assignedPassenger,
+        GameObject cloudPrefab)
+    {
+        if (cloudPrefab == null || string.IsNullOrWhiteSpace(objectName))
+        {
+            return;
+        }
+
+        Transform existing = FindStandaloneTriArcCloudPlatformInCurrentScene(objectName);
+        GameObject cloud;
+        bool createdNew = false;
+
+        if (existing != null)
+        {
+            cloud = existing.gameObject;
+        }
+        else
+        {
+            createdNew = true;
+            cloud = Instantiate(cloudPrefab);
+            cloud.transform.position = Vector3.zero;
+
+            if (normalizePrefabScaleToCell)
+            {
+                Vector3 scaleMultiplier = GetScaleMultiplier(cloudPrefab, cloud);
+                cloud.transform.localScale = Vector3.Scale(cloud.transform.localScale, scaleMultiplier);
+            }
+
+            cloud.name = objectName;
+        }
+
+        if (createdNew || !keepManualTriArcCloudTransform)
+        {
+            AlignBlockToGrid(cloud, startX, startY, startZ);
+        }
+
+        EnsureCollider(cloud);
+        RemoveComponentIfPresent<RadialShuttleCloudPlatform>(cloud);
+        RemoveComponentIfPresent<VerticalWaveCloudPlatform>(cloud);
+        RemoveComponentIfPresent<FlyingMinecraftCloudPlatform>(cloud);
+
+        FigureEightCloudPlatform mover = cloud.GetComponent<FigureEightCloudPlatform>();
+        bool createdMover = false;
+        if (mover == null)
+        {
+            mover = cloud.AddComponent<FigureEightCloudPlatform>();
+            createdMover = true;
+        }
+
+        bool shouldApplyBuilderMotion = createdNew || createdMover || !keepManualTriArcCloudMotionSettings;
+        if (shouldApplyBuilderMotion)
+        {
+            bool reverse = reverseAlternatingTriArcClouds && ((index & 1) == 1);
+            mover.Configure(
+                radiusX: triArcRadiusX,
+                radiusZ: triArcRadiusY,
+                cycleDuration: triArcCycleDuration,
+                bobAmplitude: triArcDepthBobAmplitude,
+                bobFrequency: triArcDepthBobFrequency,
+                assignedPassenger: assignedPassenger,
+                plane: triArcPlane,
+                reverse: reverse,
+                shape: FigureEightCloudPlatform.PathShape.Lissajous,
+                phaseDegrees: ResolveTriArcPhase(index),
+                flipIntervalSeconds: 0f);
+        }
+    }
+
+    private float ResolveTriArcPhase(int index)
+    {
+        float patternPhase;
+        switch (index)
+        {
+            case 0:
+                patternPhase = 0f;
+                break;
+            case 1:
+                patternPhase = 180f;
+                break;
+            case 2:
+                patternPhase = 60f;
+                break;
+            case 3:
+                patternPhase = 240f;
+                break;
+            case 4:
+                patternPhase = 120f;
+                break;
+            case 5:
+                patternPhase = 300f;
+                break;
+            default:
+                patternPhase = index * 60f;
+                break;
+        }
+
+        return Mathf.Repeat(triArcPhaseOffsetDegrees + patternPhase, 360f);
+    }
+
+    private void ClearStandaloneTriArcCloudPlatforms()
+    {
+        ClearStandaloneTriArcCloudPlatform(triArcCloudAName);
+        ClearStandaloneTriArcCloudPlatform(triArcCloudBName);
+        ClearStandaloneTriArcCloudPlatform(triArcCloudCName);
+        ClearStandaloneTriArcCloudPlatform(triArcCloudDName);
+        ClearStandaloneTriArcCloudPlatform(triArcCloudEName);
+        ClearStandaloneTriArcCloudPlatform(triArcCloudFName);
+    }
+
+    private void ClearStandaloneTriArcCloudPlatform(string objectName)
+    {
+        Transform existing = FindStandaloneTriArcCloudPlatformInCurrentScene(objectName);
+        if (existing == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(existing.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(existing.gameObject);
+        }
+    }
+
+    private Transform FindStandaloneTriArcCloudPlatformInCurrentScene(string objectName)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+        {
+            return null;
+        }
+
+        Scene scene = gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            return null;
+        }
+
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            if (roots[i].name == objectName)
+            {
+                return roots[i].transform;
+            }
+        }
+
+        return null;
+    }
+
+    private void RemoveComponentIfPresent<T>(GameObject target) where T : Component
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        T component = target.GetComponent<T>();
+        if (component == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(component);
+        }
+        else
+        {
+            DestroyImmediate(component);
         }
     }
 

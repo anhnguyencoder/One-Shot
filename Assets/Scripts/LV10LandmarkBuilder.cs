@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -27,6 +28,14 @@ public class LV10LandmarkBuilder : MonoBehaviour
     [SerializeField] private int groundFrontDepth = 36;
     [SerializeField] private bool normalizePrefabScaleToCell = true;
     [SerializeField] private bool preventCellOverlap = true;
+
+    [Header("Performance")]
+    [SerializeField] private bool optimizeMapRenderers = true;
+    [SerializeField] private bool disableMapShadows = true;
+    [SerializeField] private bool disableLightAndReflectionProbes = true;
+    [SerializeField] private bool markSpawnedBlocksStatic = true;
+    [SerializeField] private bool disableDecorativeColliders = true;
+    [SerializeField] private bool useRuntimeStaticBatching = true;
 
     [Header("2D Petra Mode")]
     [SerializeField] private int artPlaneZ = 25;
@@ -248,6 +257,7 @@ public class LV10LandmarkBuilder : MonoBehaviour
         Build2DArtPanel();
         BuildPetraFacadePixelArt();
         BuildDesertCanyonAndSun();
+        TryApplyRuntimeStaticBatching();
 
         Physics.SyncTransforms();
 #if UNITY_EDITOR
@@ -731,7 +741,7 @@ public class LV10LandmarkBuilder : MonoBehaviour
                     continue;
                 }
 
-                SpawnBlock(panelPrefab, x, y, z, $"Panel_{x}_{y}");
+                SpawnBlock(panelPrefab, x, y, z, $"Panel_{x}_{y}", needsCollider: false, decorative: true);
             }
         }
     }
@@ -747,10 +757,10 @@ public class LV10LandmarkBuilder : MonoBehaviour
 
         for (int x = -17; x <= 17; x++)
         {
-            SpawnBlock(sandstonePrefab, x, baseY, z, $"Terrace_{x}");
+            SpawnBlock(sandstonePrefab, x, baseY, z, $"Terrace_{x}", needsCollider: false, decorative: true);
             if (Mathf.Abs(x) <= 15)
             {
-                SpawnBlock(sandstonePrefab, x, baseY + 1, z, $"TerraceTop_{x}");
+                SpawnBlock(sandstonePrefab, x, baseY + 1, z, $"TerraceTop_{x}", needsCollider: false, decorative: true);
             }
         }
 
@@ -765,7 +775,7 @@ public class LV10LandmarkBuilder : MonoBehaviour
             {
                 if (x == leftEdge || ((x + gy) & 1) == 0)
                 {
-                    SpawnBlock(cliffPrefab, x, gy, z, $"CanyonL_{x}_{gy}");
+                    SpawnBlock(cliffPrefab, x, gy, z, $"CanyonL_{x}_{gy}", needsCollider: false, decorative: true);
                 }
             }
 
@@ -773,7 +783,7 @@ public class LV10LandmarkBuilder : MonoBehaviour
             {
                 if (x == rightEdge || ((x + gy) & 1) == 0)
                 {
-                    SpawnBlock(cliffPrefab, x, gy, z, $"CanyonR_{x}_{gy}");
+                    SpawnBlock(cliffPrefab, x, gy, z, $"CanyonR_{x}_{gy}", needsCollider: false, decorative: true);
                 }
             }
         }
@@ -795,20 +805,20 @@ public class LV10LandmarkBuilder : MonoBehaviour
 
                 if ((edge || colonnade || beam) && !doorway && !innerVoid)
                 {
-                    SpawnBlock(sandstonePrefab, x, y, z, $"Facade_{x}_{y}");
+                    SpawnBlock(sandstonePrefab, x, y, z, $"Facade_{x}_{y}", needsCollider: false, decorative: true);
                 }
             }
         }
 
         for (int y = facadeMinY; y <= facadeMinY + 5; y++)
         {
-            SpawnBlock(accentPrefab, -3, y, z, $"DoorFrameL_{y}");
-            SpawnBlock(accentPrefab, 3, y, z, $"DoorFrameR_{y}");
+            SpawnBlock(accentPrefab, -3, y, z, $"DoorFrameL_{y}", needsCollider: false, decorative: true);
+            SpawnBlock(accentPrefab, 3, y, z, $"DoorFrameR_{y}", needsCollider: false, decorative: true);
         }
 
         for (int x = -3; x <= 3; x++)
         {
-            SpawnBlock(accentPrefab, x, facadeMinY + 6, z, $"DoorLintel_{x}");
+            SpawnBlock(accentPrefab, x, facadeMinY + 6, z, $"DoorLintel_{x}", needsCollider: false, decorative: true);
         }
 
         int pedimentBaseY = facadeMaxY + 1;
@@ -822,7 +832,7 @@ public class LV10LandmarkBuilder : MonoBehaviour
                 bool fill = layer == 0 && ((x & 1) == 0);
                 if (edge || fill)
                 {
-                    SpawnBlock(sandstonePrefab, x, gy, z, $"Pediment_{x}_{gy}");
+                    SpawnBlock(sandstonePrefab, x, gy, z, $"Pediment_{x}_{gy}", needsCollider: false, decorative: true);
                 }
             }
         }
@@ -838,14 +848,14 @@ public class LV10LandmarkBuilder : MonoBehaviour
                 bool pillars = layer <= 2 && (x == -2 || x == 0 || x == 2);
                 if (shell || pillars)
                 {
-                    SpawnBlock(cliffPrefab, x, gy, z, $"Tholos_{x}_{gy}");
+                    SpawnBlock(cliffPrefab, x, gy, z, $"Tholos_{x}_{gy}", needsCollider: false, decorative: true);
                 }
             }
         }
 
-        SpawnBlock(accentPrefab, 0, tholosBaseY + 5, z, "TopUrn");
-        SpawnBlock(accentPrefab, -1, tholosBaseY + 4, z, "TopUrnL");
-        SpawnBlock(accentPrefab, 1, tholosBaseY + 4, z, "TopUrnR");
+        SpawnBlock(accentPrefab, 0, tholosBaseY + 5, z, "TopUrn", needsCollider: false, decorative: true);
+        SpawnBlock(accentPrefab, -1, tholosBaseY + 4, z, "TopUrnL", needsCollider: false, decorative: true);
+        SpawnBlock(accentPrefab, 1, tholosBaseY + 4, z, "TopUrnR", needsCollider: false, decorative: true);
 
         for (int step = 0; step < 4; step++)
         {
@@ -853,7 +863,7 @@ public class LV10LandmarkBuilder : MonoBehaviour
             int half = 4 + step;
             for (int x = -half; x <= half; x++)
             {
-                SpawnBlock(sandstonePrefab, x, gy, z, $"Stair_{step}_{x}");
+                SpawnBlock(sandstonePrefab, x, gy, z, $"Stair_{step}_{x}", needsCollider: false, decorative: true);
             }
         }
     }
@@ -868,24 +878,24 @@ public class LV10LandmarkBuilder : MonoBehaviour
         {
             if ((x & 1) == 0)
             {
-                SpawnBlock(sandPrefab, x, artBaseY + 1, z, $"Dune_{x}");
+                SpawnBlock(sandPrefab, x, artBaseY + 1, z, $"Dune_{x}", needsCollider: false, decorative: true);
             }
         }
 
         for (int x = -14; x <= 14; x += 4)
         {
-            SpawnBlock(accentPrefab, x, artBaseY + 2, z, $"Torch_{x}");
+            SpawnBlock(accentPrefab, x, artBaseY + 2, z, $"Torch_{x}", needsCollider: false, decorative: true);
         }
 
         int sunY = artBaseY + artPanelHeight - 4;
-        SpawnBlock(accentPrefab, 12, sunY, z, "SunCore");
-        SpawnBlock(accentPrefab, 11, sunY, z, "SunL");
-        SpawnBlock(accentPrefab, 13, sunY, z, "SunR");
-        SpawnBlock(accentPrefab, 12, sunY + 1, z, "SunTop");
-        SpawnBlock(accentPrefab, 12, sunY - 1, z, "SunBottom");
+        SpawnBlock(accentPrefab, 12, sunY, z, "SunCore", needsCollider: false, decorative: true);
+        SpawnBlock(accentPrefab, 11, sunY, z, "SunL", needsCollider: false, decorative: true);
+        SpawnBlock(accentPrefab, 13, sunY, z, "SunR", needsCollider: false, decorative: true);
+        SpawnBlock(accentPrefab, 12, sunY + 1, z, "SunTop", needsCollider: false, decorative: true);
+        SpawnBlock(accentPrefab, 12, sunY - 1, z, "SunBottom", needsCollider: false, decorative: true);
     }
 
-    private void SpawnBlock(GameObject prefab, int gx, int gy, int gz, string objectName)
+    private void SpawnBlock(GameObject prefab, int gx, int gy, int gz, string objectName, bool needsCollider = true, bool decorative = false)
     {
         if (prefab == null || mapRoot == null)
         {
@@ -912,7 +922,21 @@ public class LV10LandmarkBuilder : MonoBehaviour
 
         AlignBlockToGrid(block, gx, gy, gz);
         block.name = objectName;
-        EnsureCollider(block);
+        ApplyRendererPerformanceSettings(block);
+
+        if (markSpawnedBlocksStatic)
+        {
+            block.isStatic = true;
+        }
+
+        if (needsCollider)
+        {
+            EnsureCollider(block);
+        }
+        else if (decorative && disableDecorativeColliders)
+        {
+            DisableColliders(block);
+        }
     }
 
     private void AlignBlockToGrid(GameObject block, int gx, int gy, int gz)
@@ -971,6 +995,55 @@ public class LV10LandmarkBuilder : MonoBehaviour
     private Vector3 GetMapRootWorldOffset()
     {
         return mapRoot != null ? mapRoot.position : Vector3.zero;
+    }
+
+    private void ApplyRendererPerformanceSettings(GameObject block)
+    {
+        if (!optimizeMapRenderers || block == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = block.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (disableMapShadows)
+            {
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
+
+            if (disableLightAndReflectionProbes)
+            {
+                renderer.lightProbeUsage = LightProbeUsage.Off;
+                renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            }
+        }
+    }
+
+    private void DisableColliders(GameObject block)
+    {
+        if (block == null)
+        {
+            return;
+        }
+
+        Collider[] colliders = block.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            colliders[i].enabled = false;
+        }
+    }
+
+    private void TryApplyRuntimeStaticBatching()
+    {
+        if (!Application.isPlaying || !useRuntimeStaticBatching || mapRoot == null)
+        {
+            return;
+        }
+
+        StaticBatchingUtility.Combine(mapRoot.gameObject);
     }
 
     private void EnsureCollider(GameObject block)
