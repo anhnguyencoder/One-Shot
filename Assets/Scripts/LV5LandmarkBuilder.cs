@@ -46,6 +46,7 @@ public class LV5LandmarkBuilder : MonoBehaviour
     [Header("Flying Cloud Platforms (3 Lanes)")]
     [SerializeField] private bool buildFlyingCloudPlatforms = true;
     [SerializeField] private bool keepManualCloudTransform = true;
+    [SerializeField] private bool keepManualCloudMotionSettings = true;
     [SerializeField] private string cloudAName = "LV5_Cloud_A";
     [SerializeField] private string cloudBName = "LV5_Cloud_B";
     [SerializeField] private string cloudCName = "LV5_Cloud_C";
@@ -872,22 +873,28 @@ public class LV5LandmarkBuilder : MonoBehaviour
         EnsureCollider(cloud);
 
         FigureEightCloudPlatform mover = cloud.GetComponent<FigureEightCloudPlatform>();
+        bool createdMover = false;
         if (mover == null)
         {
             mover = cloud.AddComponent<FigureEightCloudPlatform>();
+            createdMover = true;
         }
 
-        mover.Configure(
-            radiusX: radiusX,
-            radiusZ: radiusMinor,
-            cycleDuration: duration,
-            bobAmplitude: cloudBobAmplitude,
-            bobFrequency: cloudBobFrequency,
-            assignedPassenger: assignedPassenger,
-            plane: plane,
-            reverse: reverseDirection,
-            shape: shape,
-            phaseDegrees: phaseDegrees);
+        bool shouldApplyBuilderMotion = createdNew || createdMover || !keepManualCloudMotionSettings;
+        if (shouldApplyBuilderMotion)
+        {
+            mover.Configure(
+                radiusX: radiusX,
+                radiusZ: radiusMinor,
+                cycleDuration: duration,
+                bobAmplitude: cloudBobAmplitude,
+                bobFrequency: cloudBobFrequency,
+                assignedPassenger: assignedPassenger,
+                plane: plane,
+                reverse: reverseDirection,
+                shape: shape,
+                phaseDegrees: phaseDegrees);
+        }
     }
 
     private void ClearStandaloneCloudPlatforms()

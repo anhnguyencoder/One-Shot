@@ -11,6 +11,7 @@ public class VerticalWaveCloudPlatform : MonoBehaviour
 
     [Header("Passenger")]
     [SerializeField] private Transform passenger;
+    [SerializeField] private bool snapPassengerToTop = false;
 
     private Vector3 _anchorPosition;
     private Vector3 _lastPosition;
@@ -82,6 +83,19 @@ public class VerticalWaveCloudPlatform : MonoBehaviour
         amplitude = Mathf.Max(0.05f, amplitude);
         cycleDuration = Mathf.Max(0.1f, cycleDuration);
         phaseOffsetDegrees = Mathf.Repeat(phaseOffsetDegrees, 360f);
+
+        if (snapPassengerToTop && passenger != null && !Application.isPlaying)
+        {
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this == null || passenger == null)
+                {
+                    return;
+                }
+
+                SnapPassengerOnTop();
+            };
+        }
     }
 #endif
 
@@ -96,5 +110,46 @@ public class VerticalWaveCloudPlatform : MonoBehaviour
         _lastPosition = _anchorPosition;
         _startTime = Time.timeAsDouble;
         _initialized = true;
+    }
+
+    [ContextMenu("Snap Passenger To Top")]
+    private void SnapPassengerOnTop()
+    {
+        if (passenger == null)
+        {
+            return;
+        }
+
+        Vector3 topPos = transform.position;
+        Renderer[] cloudRenderers = GetComponentsInChildren<Renderer>(true);
+        if (cloudRenderers.Length > 0)
+        {
+            Bounds cloudBounds = cloudRenderers[0].bounds;
+            for (int i = 1; i < cloudRenderers.Length; i++)
+            {
+                cloudBounds.Encapsulate(cloudRenderers[i].bounds);
+            }
+
+            topPos = new Vector3(cloudBounds.center.x, cloudBounds.max.y, cloudBounds.center.z);
+        }
+
+        float feetOffset = 0f;
+        Renderer[] passengerRenderers = passenger.GetComponentsInChildren<Renderer>(true);
+        if (passengerRenderers.Length > 0)
+        {
+            Bounds passengerBounds = passengerRenderers[0].bounds;
+            for (int i = 1; i < passengerRenderers.Length; i++)
+            {
+                passengerBounds.Encapsulate(passengerRenderers[i].bounds);
+            }
+
+            feetOffset = passenger.position.y - passengerBounds.min.y;
+        }
+
+        passenger.position = new Vector3(topPos.x, topPos.y + feetOffset, topPos.z);
+
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(passenger);
+#endif
     }
 }
