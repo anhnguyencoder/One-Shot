@@ -248,7 +248,10 @@ public class LV11LandmarkBuilder : MonoBehaviour
 
         Physics.SyncTransforms();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
@@ -259,7 +262,10 @@ public class LV11LandmarkBuilder : MonoBehaviour
         ClearMapRootChildren();
         ClearStandaloneLissajousClouds();
 #if UNITY_EDITOR
-        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 #endif
     }
 
