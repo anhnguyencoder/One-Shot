@@ -42,7 +42,7 @@ EditorBuildSettings:
     path: Assets/Scenes/LV11.unity
     guid: 3df331c1df2c5d54891605559c06eb70
   - enabled: 1
-    path: Assets/Scenes/LV12.unity
+    path: Assets/Scenes/Lv12.unity
     guid: 49bd1434658ca484b9a77a1cdcfb8d1d
   - enabled: 1
     path: Assets/Scenes/LV13.unity
@@ -53,16 +53,16 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/LV15.unity
     guid: 62f5fb36eafc7174dbfee987e5e5f1e1
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/LV16.unity
     guid: e9f1232457627bc4d865f909530642ca
-  - enabled: 1
-    path: Assets/Scenes/LV17.unity
+  - enabled: 0
+    path: Assets/Scenes/Lv17.unity
     guid: 7217eea4f1bfd7145970b32dc37781c8
   - enabled: 1
     path: Assets/Scenes/LV18.unity
     guid: ff0b6c7cdd4ae994cae210740ba87a13
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/LV19.unity
     guid: bc1175d578885314d904a218883b2eff
   - enabled: 1
